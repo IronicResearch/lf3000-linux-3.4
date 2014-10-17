@@ -112,8 +112,8 @@ if [ "$?" != "0" ]; then
 	exit $?
 fi
 
-cp $(dirname $0)/linux-$LINUX_VERSION/arch/arm/boot/Image $DEPLOY_PATH/Image-$LINUX_VERSION
-cp $(dirname $0)/linux-$LINUX_VERSION/arch/arm/boot/uImage $DEPLOY_PATH/uImage-$LINUX_VERSION
+cp $(dirname $0)/arch/arm/boot/Image $DEPLOY_PATH/Image-$LINUX_VERSION
+cp $(dirname $0)/arch/arm/boot/uImage $DEPLOY_PATH/uImage-$LINUX_VERSION
 
 pushd $ROOTFS_PATH
 tar -cvf $DEPLOY_PATH/modules-$LINUX_VERSION.tar ./lib/modules
