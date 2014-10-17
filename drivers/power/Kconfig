@@ -97,6 +97,17 @@ config BATTERY_DS2782
 	  Say Y here to enable support for the DS2782/DS2786 standalone battery
 	  gas-gauge.
 
+config FUELGAUGE_DS2784
+	tristate "MAXIM DS2784 Fuel Gauge"
+	select W1
+	select W1_SLAVE_DS2784
+	help
+	  Say Y to enable support for the DS2784 fuel gauge chip.
+
+	  This fuel gauge chip is used to monitor remaining battery
+	  capacity, and possibly protect against charging errors, for
+	  Li+ batteries.
+
 config BATTERY_PMU
 	tristate "Apple PMU battery"
 	depends on PPC32 && ADB_PMU
@@ -123,6 +134,14 @@ config BATTERY_COLLIE
 	help
 	  Say Y to enable support for the battery on the Sharp Zaurus
 	  SL-5500 (collie) models.
+
+config BATTERY_NXE2000
+	tristate "Nexell NXE2000 PMIC battery driver"
+	select MFD_NXE2000
+	select REGULATOR_NXE2000
+	help
+	  Say Y to enable support for the battery control of the Nexell NXE2000
+	  Power Management device.
 
 config BATTERY_WM97XX
 	bool "WM97xx generic battery driver"

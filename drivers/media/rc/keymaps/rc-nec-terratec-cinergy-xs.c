@@ -18,6 +18,50 @@
  */
 
 static struct rc_map_table nec_terratec_cinergy_xs[] = {
+	/* Nexell key map*/
+	{ 0x0000, KEY_POWER},
+	{ 0x000e, KEY_BACK},
+
+	{ 0x0010, KEY_UP},
+	{ 0x0011, KEY_LEFT},
+	{ 0x0012, KEY_ENTER},
+	{ 0x0013, KEY_RIGHT},
+	{ 0x0014, KEY_DOWN},
+
+	{ 0x0029, KEY_HOMEPAGE},
+	{ 0x002a, KEY_MENU},
+
+	{ 0x00f3, KEY_VOLUMEUP},
+	{ 0x00f4, KEY_VOLUMEDOWN},
+
+
+
+
+	{ 0x08d7, KEY_POWER},
+	{ 0x08df, KEY_MUTE},
+
+	{ 0x08de, KEY_HOMEPAGE},
+
+	{ 0x08d9, KEY_UP},
+	{ 0x08d5, KEY_LEFT},
+	{ 0x08da, KEY_ENTER},
+	{ 0x08dd, KEY_RIGHT},
+	{ 0x08db, KEY_DOWN},
+
+	{ 0x08c1, KEY_BACK},
+	{ 0x08c2, KEY_MENU},
+
+	{ 0x08d3, KEY_VOLUMEUP},
+	{ 0x08d1, KEY_VOLUMEDOWN},
+
+	{ 0x08ca, KEY_F1},
+	{ 0x08cc, KEY_F2},
+	{ 0x08cb, KEY_F3},
+	{ 0x08cd, KEY_F4},
+	/* Nexell key map end*/
+
+
+
 
 	/* Terratec Grey IR, with most keys in orange */
 	{ 0x1441, KEY_HOME},

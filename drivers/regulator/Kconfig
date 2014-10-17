@@ -74,6 +74,13 @@ config REGULATOR_GPIO
 	  and the platform has to provide a mapping of GPIO-states
 	  to target volts/amps.
 
+config REGULATOR_NXE2000
+	tristate "Nexell NXE2000 Power regulator"
+	select MFD_NXE2000
+	help
+	  This driver supports regulator driver for the Nexell NXE2000
+	  Power Management device.
+
 config REGULATOR_AD5398
 	tristate "Analog Devices AD5398/AD5821 regulators"
 	depends on I2C
@@ -148,6 +155,15 @@ config REGULATOR_MAX1586
 	  This driver controls a Maxim 1586 or 1587 voltage output
 	  regulator via I2C bus. The provided regulator is suitable
 	  for PXA27x chips to control VCC_CORE and VCC_USIM voltages.
+
+config REGULATOR_MAX77686
+	tristate "Maxim 77686 regulator"
+	depends on MFD_MAX77686
+	help
+	  This driver controls a Maxim 77686 regulator via I2C bus or 3 GPIO ports
+	  to control BUCK2, BUCK3, BUCK4.
+	  The provided regulator is suitable for Exynos-4 and Exynos-5
+	  chips to control VARM, VINT voltages and the other LDOs.
 
 config REGULATOR_MAX8649
 	tristate "Maxim 8649 voltage regulator"

@@ -21,7 +21,7 @@
 #include <linux/mmc/dw_mmc.h>
 #include "dw_mmc.h"
 
-static int dw_mci_pltfm_probe(struct platform_device *pdev)
+static int __init dw_mci_pltfm_probe(struct platform_device *pdev)
 {
 	struct dw_mci *host;
 	struct resource	*regs;
@@ -54,6 +54,9 @@ static int dw_mci_pltfm_probe(struct platform_device *pdev)
 	ret = dw_mci_probe(host);
 	if (ret)
 		goto err_out;
+
+	/* add by jhkim */
+	device_enable_async_suspend(&pdev->dev);
 	return ret;
 err_out:
 	iounmap(host->regs);

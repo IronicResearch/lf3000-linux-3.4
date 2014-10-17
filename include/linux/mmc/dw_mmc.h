@@ -15,6 +15,7 @@
 #define LINUX_MMC_DW_MMC_H
 
 #include <linux/scatterlist.h>
+#include <linux/mmc/core.h>
 
 #define MAX_MCI_SLOTS	2
 
@@ -125,6 +126,11 @@ struct dw_mci {
 	struct mmc_request	*mrq;
 	struct mmc_command	*cmd;
 	struct mmc_data		*data;
+	struct mmc_command	stop;
+	bool			stop_snd;
+	struct clk		*hclk;
+	struct clk		*cclk;
+	bool			prv_err;
 
 	/* DMA interface members*/
 	int			use_dma;
@@ -138,21 +144,25 @@ struct dw_mci {
 #else
 	struct dw_mci_dma_data	*dma_data;
 #endif
+	unsigned int		desc_sz;
 	u32			cmd_status;
 	u32			data_status;
 	u32			stop_cmdr;
 	u32			dir_status;
 	struct tasklet_struct	tasklet;
 	struct work_struct	card_work;
+	struct work_struct	resume_work;	/* add by jhkim */
 	unsigned long		pending_events;
 	unsigned long		completed_events;
 	enum dw_mci_state	state;
 	struct list_head	queue;
 
 	u32			bus_hz;
+	u32			max_bus_hz;
 	u32			current_speed;
 	u32			num_slots;
 	u32			fifoth_val;
+	u32			cd_rd_thr;
 	u16			verid;
 	u16			data_offset;
 	struct device		dev;
@@ -175,6 +185,9 @@ struct dw_mci {
 	/* Workaround flags */
 	u32			quirks;
 
+	/* S/W reset timer */
+	struct timer_list       timer;
+
 	struct regulator	*vmmc;	/* Power regulator */
 	unsigned long		irq_flags; /* IRQ flags */
 	unsigned int		irq;
@@ -187,6 +200,7 @@ struct dw_mci_dma_ops {
 	void (*start)(struct dw_mci *host, unsigned int sg_len);
 	void (*complete)(struct dw_mci *host);
 	void (*stop)(struct dw_mci *host);
+	void (*reset)(struct dw_mci *host);
 	void (*cleanup)(struct dw_mci *host);
 	void (*exit)(struct dw_mci *host);
 };
@@ -200,7 +214,18 @@ struct dw_mci_dma_ops {
 #define DW_MCI_QUIRK_HIGHSPEED			BIT(2)
 /* Unreliable card detection */
 #define DW_MCI_QUIRK_BROKEN_CARD_DETECTION	BIT(3)
+/* No detect end bit during read */
+#define DW_MCI_QUIRK_NO_DETECT_EBIT             BIT(4)
+/* Hardware reset using power off/on of card */
+#define DW_MMC_QUIRK_HW_RESET_PW 		BIT(5)
 
+enum dw_mci_cd_types {
+	DW_MCI_CD_INTERNAL,	/* use mmc internal CD line */
+	DW_MCI_CD_EXTERNAL,	/* use external callback */
+	DW_MCI_CD_GPIO,		/* use external gpio pin for CD line */
+	DW_MCI_CD_NONE,		/* no CD line, use polling to detect card */
+	DW_MCI_CD_PERMANENT,	/* no CD line, card permanently wired to host */
+};
 
 struct dma_pdata;
 
@@ -218,9 +243,12 @@ struct dw_mci_board {
 
 	u32 quirks; /* Workaround / Quirk flags */
 	unsigned int bus_hz; /* Bus speed */
+	unsigned int max_bus_hz; /* MAXIMUM Bus speed */
 
 	unsigned int caps;	/* Capabilities */
 	unsigned int caps2;	/* More capabilities */
+	unsigned int pm_caps;	/* supported pm features */
+
 	/*
 	 * Override fifo depth. If 0, autodetect it from the FIFOTH register,
 	 * but note that this may not be reliable after a bootloader has used
@@ -231,11 +259,48 @@ struct dw_mci_board {
 	/* delay in mS before detecting cards after interrupt */
 	u32 detect_delay_ms;
 
+	char *hclk_name;
+	char *cclk_name;
+
 	int (*init)(u32 slot_id, irq_handler_t , void *);
 	int (*get_ro)(u32 slot_id);
 	int (*get_cd)(u32 slot_id);
 	int (*get_ocr)(u32 slot_id);
 	int (*get_bus_wd)(u32 slot_id);
+	void (*cfg_gpio)(int width);
+	void (*hw_reset)(u32 slot_id);
+	void (*set_io_timing)(void *data, unsigned char timing);
+
+	/* Phase Shift Value */
+	unsigned int sdr_timing;
+	unsigned int ddr_timing;
+	u8 clk_drv;
+	u8 clk_smpl;
+	bool tuned;
+
+	/*
+	 * add by Youngbok Park
+	 */
+	u32 clk_dly;
+	/* cd_type: Type of Card Detection method (see cd_types enum above) */
+	enum dw_mci_cd_types cd_type;
+
+	/* Number of descriptors */
+	unsigned int desc_sz;
+
+	/* ext_cd_cleanup: Cleanup external card detect subsystem.
+	* ext_cd_init: Initialize external card detect subsystem.
+	*	notify_func argument is a callback to the dwmci driver
+	*	that triggers the card detection event. Callback arguments:
+	*	dev is pointer to platform device of the host controller,
+	*	state is new state of the card (0 - removed, 1 - inserted).
+	*/
+
+	int (*ext_cd_init)(void (*notify_func)
+		(struct platform_device *, int state));
+	int (*ext_cd_cleanup)(void (*notify_func)
+		(struct platform_device *, int state));
+
 	/*
 	 * Enable power to selected slot and set voltage to desired level.
 	 * Voltage levels are specified using MMC_VDD_xxx defines defined
@@ -248,6 +313,19 @@ struct dw_mci_board {
 	struct dw_mci_dma_ops *dma_ops;
 	struct dma_pdata *data;
 	struct block_settings *blk_settings;
+	/*
+	 * add by jhkim
+	 */
+	void (*suspend)(struct dw_mci *host);
+	void (*resume)(struct dw_mci *host);
+	void (*late_resume)(struct dw_mci *host);
+	u32		hs_over_clk;
+	u32		hw_timeout;	/* add by jhkim */
 };
+
+#define	DW_MMC_DRIVE_DELAY(n)		((n & 0xFF) << 0)	// write
+#define	DW_MMC_DRIVE_PHASE(n)		((n & 0x03) <<16)	// write
+#define	DW_MMC_SAMPLE_DELAY(n)		((n & 0xFF) << 8)	// read
+#define	DW_MMC_SAMPLE_PHASE(n)		((n & 0x03) <<24)	// read
 
 #endif /* LINUX_MMC_DW_MMC_H */
