@@ -86,6 +86,7 @@ obj-$(CONFIG_VIDEO_AS3645A)	+= as3645a.o
 
 obj-$(CONFIG_VIDEO_S5K5CAGX)    += s5k5cagx.o
 obj-$(CONFIG_VIDEO_S5K4ECGX)	+= s5k4ecgx.o
+obj-$(CONFIG_VIDEO_HI253)       += hi253.o
 obj-$(CONFIG_VIDEO_SP2518)		+= sp2518.o
 obj-$(CONFIG_VIDEO_SP0A19)		+= sp0a19.o
 obj-$(CONFIG_VIDEO_SP0838)		+= sp0838.o
@@ -107,6 +108,7 @@ obj-$(CONFIG_SOC_CAMERA_OV9640)		+= ov9640.o
 obj-$(CONFIG_SOC_CAMERA_OV9740)		+= ov9740.o
 obj-$(CONFIG_SOC_CAMERA_RJ54N1)		+= rj54n1cb0c.o
 obj-$(CONFIG_SOC_CAMERA_TW9910)		+= tw9910.o
+obj-$(CONFIG_SOC_CAMERA_HI253)		+= lf2000/hynix_yac.o
 
 # And now the v4l2 drivers:
 
@@ -207,6 +209,10 @@ obj-$(CONFIG_VIDEO_SAMSUNG_S5P_TV)	+= s5p-tv/
 obj-$(CONFIG_VIDEO_SAMSUNG_S5P_G2D)	+= s5p-g2d/
 
 obj-$(CONFIG_VIDEO_EXYNOS)		+= exynos/
+
+obj-$(CONFIG_V4L2_NEXELL)			+= nexell/
+
+obj-$(CONFIG_V4L2_LF2000)			+= lf2000/
 
 obj-$(CONFIG_V4L2_NEXELL)			+= nexell/
 

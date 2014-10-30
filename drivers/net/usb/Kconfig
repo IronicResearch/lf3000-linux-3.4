@@ -157,6 +157,33 @@ config USB_NET_AX8817X
 	  This driver creates an interface named "ethX", where X depends on
 	  what other networking devices you have in use.
 
+config USB_NET_AX88772C
+	tristate "ASIX AX88772C Based USB 2.0 Ethernet Adapters"
+	select CRC32
+	default n
+	help
+	  This option adds support for ASIX AX88772C based USB 2.0
+	  10/100 Ethernet adapters.
+
+ 	  This driver should work with at least the following devices:
+	    * Aten UC210T
+    	    * ASIX AX88172
+	    * ASIX AX88772C
+	    * Billionton Systems, USB2AR
+	    * Buffalo LUA-U2-KTX
+	    * Corega FEther USB2-TX
+	    * D-Link DUB-E100
+	    * Hawking UF200
+	    * Linksys USB200M
+	    * Netgear FA120
+	    * Sitecom LN-029
+	    * Intellinet USB 2.0 Ethernet
+	    * ST Lab USB 2.0 Ethernet
+	    * TrendNet TU2-ET100
+
+	  This driver creates an interface named "ethX", where X depends on
+	  what other networking devices you have in use.
+
 config USB_NET_CDCETHER
 	tristate "CDC Ethernet support (smart devices such as cable modems)"
 	depends on USB_USBNET

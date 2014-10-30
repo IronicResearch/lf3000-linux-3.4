@@ -49,7 +49,7 @@ fi
 export PARENT_DIR=`dirname $PWD`
 
 if [ "x$DEPLOY_PATH" == "x" ]; then
-        export DEPLOY_PATH=$PARENT_DIR/deploy
+        export DEPLOY_PATH=..$PARENT_DIR/deploy
 fi
 
 echo "*** Using DEPLOY_PATH=$DEPLOY_PATH ***"

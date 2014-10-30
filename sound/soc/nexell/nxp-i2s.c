@@ -171,6 +171,12 @@ static int set_sample_rate_clock(struct clk *clk, unsigned long request,
 	if (0 == dio)
 		goto done;
 
+#if defined(CONFIG_PLAT_NXP4330_CABO) || defined(CONFIG_PLAT_NXP4330_XANADU)
+	/* calculate clock divider from active PLL frequency */
+	rate = clk_set_rate(clk, clock);
+	div = rate / clock;
+	ret = 0;
+#else
 	/* form clock generator */
 	for (i = 1; 65 > i; i++, clock = i*request) {
 		find = clk_set_rate(clk, clock);
@@ -184,6 +190,7 @@ static int set_sample_rate_clock(struct clk *clk, unsigned long request,
 				break;
 		}
 	}
+#endif
 
 done:
 	pr_debug("%s: req=%ld, acq=%ld, div=%2d, %s\n",
@@ -284,6 +291,10 @@ static int i2s_start(struct nxp_i2s_snd_param *par, int stream)
 	writel(i2s->CSR, (base+I2S_CSR_OFFSET));
 	writel(i2s->CON, (base+I2S_CON_OFFSET));
 
+	// FIXME: sesters, maybe remove
+#if defined(CONFIG_SND_CODEC_TC94B26)
+	//msleep(100);  // Commented by TAEC
+#endif
 	spin_unlock(&par->lock);
 	return 0;
 }
@@ -485,7 +496,28 @@ static int nxp_i2s_set_plat_param(struct nxp_i2s_snd_param *par, void *data)
 		return ret;
 	}
 
-	return nxp_i2s_check_param(par);
+	ret = nxp_i2s_check_param(par);
+
+	/* clock set in preceding call */
+	{
+		int clkidx = CLK_ID_I2S_0;
+		int clksrc, clkdiv, clkinv;
+		unsigned int clkgen = nxp_cpu_periph_get_clock(clkidx, &clksrc, &clkdiv);
+		pr_debug("snd i2s: clk idx=%d, src=%d, div=%d, gen=%d\n", clkidx, clksrc, clkdiv, clkgen);
+		NX_CLKGEN_SetBaseAddress(clkidx, IO_ADDRESS(NX_CLKGEN_GetPhysicalAddress(clkidx)));
+#if defined(CONFIG_SND_CODEC_LFP100) || defined (CONFIG_SND_CODEC_TC94B26)
+		NX_CLKGEN_SetClockOutInv(clkidx, 0, 1);
+#endif
+#if defined (CONFIG_SND_CODEC_TC94B26)
+		msleep(100);		/* let TC94B26 codec PLL startup */
+#endif
+		clksrc = NX_CLKGEN_GetClockSource(clkidx, 0);
+		clkdiv = NX_CLKGEN_GetClockDivisor(clkidx, 0);
+		clkinv = NX_CLKGEN_GetClockOutInv(clkidx, 0);
+		pr_debug("snd i2s: clk idx=%d, src=%d, div=%d, inv=%d\n", clkidx, clksrc, clkdiv, clkinv);
+	}
+
+	return ret;
 }
 
 static int nxp_i2s_setup(struct snd_soc_dai *dai)
@@ -527,6 +559,11 @@ static void nxp_i2s_release(struct snd_soc_dai *dai)
 	cutoff_master_clock(par);
 	clk_put(par->clk);
 
+	//FIXME: sesters, just for debugging Toshiba part, maybe remove
+	if (!par->pre_supply_mclk) {
+		cutoff_master_clock(par);
+		clk_put(par->clk);
+	}
 	par->status = SNDDEV_STATUS_CLEAR;
 
 	spin_unlock(&par->lock);
@@ -623,6 +660,19 @@ static int nxp_i2s_hw_params(struct snd_pcm_substream *substream,
 		break;
 	default:
 		return -EINVAL;
+	}
+
+	if (params->rate_den > 0 && params->rate_num > 0 && params->rate_num / params->rate_den != par->sample_rate) {
+		int clkidx = CLK_ID_I2S_0;
+		int clksrc = NX_CLKGEN_GetClockSource(clkidx, 0);
+		int clkdiv = NX_CLKGEN_GetClockDivisor(clkidx, 0);
+		unsigned int clkgen = nxp_cpu_clock_hz(clksrc);
+		pr_debug("i2s: change i2s sample rate %d -> %d:%d\n", par->sample_rate, params->rate_num, params->rate_den);
+		clkdiv = (RFS == RATIO_256) ? 256 : 384;
+		NX_CLKGEN_SetClockDivisor(clkidx, 0, clkgen / params->rate_num / params->rate_den / clkdiv);
+		par->sample_rate = params->rate_num / params->rate_den;
+		clkdiv = NX_CLKGEN_GetClockDivisor(clkidx, 0);
+		pr_debug("i2s: clk idx=%d, src=%d, div=%d\n", clkidx, clksrc, clkdiv);
 	}
 
 	return ret;

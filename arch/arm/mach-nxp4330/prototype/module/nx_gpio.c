@@ -1082,6 +1082,46 @@ CBOOL	NX_GPIO_GetInputValue		( U32 ModuleIndex, U32 BitNumber )
 	return NX_GPIO_GetBit( __g_ModuleVariables[ModuleIndex].pRegister->GPIOxPAD, BitNumber );
 }
 
+ 
+/* NOTE: 
+ * Around Feb 19, 2014, Nexell sent the version of NX_GPIO_SetPullUpEnable()
+ * that appears below.  They did not modify NX_GPIO_SetPullUpEnable32().
+ * Since we do not use NX_GPIO_SetPullUpEnable32(), that's ok for us.
+ * If we start using NX_GPIO_SetPullUpEnable32(), the routine ought to be
+ * changed.  
+ */
+
+//------------------------------------------------------------------------------
+/**
+ *	@brief		Set Pull up of GPIO Pin
+ *	@param[in]	ModuleIndex		A index of module. (0:GPIOA, 1:GPIOB, 2:GPIOC )
+ *	@param[in]	BitNumber	Bit number ( 0 ~ 31 ), if ModuleIndex is GPIOC then Bit number is only 0 ~ 20.
+ *	@param[in]	enable		\b CTRUE	indicate that Pull Up. \n
+ *							\b CFALSE	indicate that NOT Pull Up.
+ *	@return		None.
+ *	@see		NX_GPIO_SetInterruptMode,		NX_GPIO_GetInterruptMode,
+ *				NX_GPIO_SetOutputEnable,		NX_GPIO_GetOutputEnable,
+ *				NX_GPIO_SetOutputValue,			NX_GPIO_GetOutputValue,
+ *				NX_GPIO_GetInputValue,
+ *				NX_GPIO_GetPullUpEnable,		NX_GPIO_SetPadFunction,
+ *				NX_GPIO_GetPadFunction,			NX_GPIO_GetValidBit
+ */
+void    NX_GPIO_SetPullUpEnable ( U32 ModuleIndex, U32 BitNumber, CBOOL enable)
+{
+    NX_ASSERT( NUMBER_OF_GPIO_MODULE > ModuleIndex );
+    NX_ASSERT( (0==enable) || (1==enable) );
+    NX_ASSERT( CNULL != __g_ModuleVariables[ModuleIndex].pRegister );
+ 
+    NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL_DISABLE_DEFAULT,
+					 BitNumber, enable );
+    NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB_DISABLE_DEFAULT,
+					 BitNumber, enable );
+    NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL, 
+					 BitNumber, enable );
+    NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB,
+					 BitNumber, enable );
+}
+
 //------------------------------------------------------------------------------
 /**
  *	@brief		Set Pull sel of GPIO Pin

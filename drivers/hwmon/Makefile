@@ -129,6 +129,9 @@ obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
 obj-$(CONFIG_SENSORS_MMA7660)	+= mma7660.o
 obj-$(CONFIG_SENSORS_MMA865X)	+= mma8653.o
 obj-$(CONFIG_SENSORS_STK831X)	+= stk831x.o
+obj-$(CONFIG_SENSORS_LF3000)    += hwmon-lf3000.o
+obj-$(CONFIG_SENSORS_GLASGOW)	+= hwmon-glasgow.o
+
 obj-$(CONFIG_PMBUS)		+= pmbus/
 obj-$(CONFIG_BOSCH)		+= bosch/
 obj-$(CONFIG_SENSORS_BMA222E_NX)	+= bma222-nx.o

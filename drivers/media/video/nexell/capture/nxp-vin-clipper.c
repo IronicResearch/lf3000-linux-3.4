@@ -31,6 +31,10 @@
 #include <mach/soc.h>
 #endif
 
+#ifdef CONFIG_VIDEO_HI253
+#include "../../hi253.h"
+#endif
+
 #include <linux/timer.h>
 
 #ifdef DEBUG_SYNC
@@ -312,6 +316,11 @@ static int _hw_set_input_size(struct nxp_vin_clipper *me)
     int module = parent->get_module_num(parent);
     struct v4l2_mbus_framefmt *mbus_fmt = &me->format[1];
     struct nxp_vin_platformdata *info = me->platdata;
+
+#ifdef CONFIG_VIDEO_HI253
+    // Clamp format size to one of native sensor sizes
+    hi253_clamp_format_size(mbus_fmt);
+#endif
 
     pr_debug("%s: w(%d), h(%d)\n", __func__, mbus_fmt->width, mbus_fmt->height);
 

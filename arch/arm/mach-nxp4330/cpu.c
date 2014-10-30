@@ -125,16 +125,26 @@ static void __init cpu_map_io(void)
 #endif
 
 	nxp_cpu_base_init();
+#if defined(CONFIG_GPIO_LEAPFROG)
+	lf_board_base_init();
+#else
 	nxp_board_base_init();
+#endif
 
 	nxp_cpu_clock_init();
 	nxp_cpu_clock_print();
 }
 
+extern void lf3000_poweroff(void);
 static void __init cpu_init_machine(void)
 {
 	/* set shutdown */
+#if defined(CONFIG_SOC_LFP100) || defined(CONFIG_TC7734_PMIC)
+	pm_power_off   = lf3000_poweroff;
+#else
 	pm_power_off   = nxp_cpu_shutdown;
+#endif
+
 	arm_pm_restart = nxp_cpu_reset;
 
 	/*

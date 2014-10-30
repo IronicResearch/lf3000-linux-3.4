@@ -1766,12 +1766,14 @@ void unregister_nxp_scaler(struct nxp_scaler *me)
 int suspend_nxp_scaler(struct nxp_scaler *me)
 {
     PM_DBGOUT("%s+\n", __func__);
+#ifdef CONFIG_ENABLE_SCALER_MISC_DEVICE
     if (NXP_ATOMIC_READ(&me->open_count) > 0) {
         NX_SCALER_Stop(0);
         NX_SCALER_SetInterruptEnableAll(0, CFALSE);
         NX_SCALER_ClearInterruptPendingAll(0);
         NX_CLKGEN_SetClockBClkMode(NX_SCALER_GetClockNumber(0), NX_BCLKMODE_DISABLE);
     }
+#endif
     PM_DBGOUT("%s-\n", __func__);
     return 0;
 }
@@ -1779,11 +1781,13 @@ int suspend_nxp_scaler(struct nxp_scaler *me)
 int resume_nxp_scaler(struct nxp_scaler *me)
 {
     PM_DBGOUT("%s+\n", __func__);
+#ifdef CONFIG_ENABLE_SCALER_MISC_DEVICE
     if (NXP_ATOMIC_READ(&me->open_count) > 0) {
         _hw_init(me);
         _hw_set_filter_table(me, &_default_filter_table);
         _hw_set_format(me);
     }
+#endif
     PM_DBGOUT("%s-\n", __func__);
     return 0;
 }

@@ -59,6 +59,15 @@ config SND_CODEC_RT5631
 	depends on SND_NEXELL_I2S
 	select SND_SOC_RT5631
 
+config SND_CODEC_LFP100
+	tristate "LFP100 I2S audio codec"
+	depends on SND_NEXELL_SOC
+	select SND_NEXELL_SOC_I2S
+	select SND_SOC_LFP100
+	help
+	  Say Y or M to enable SoC support for LFP100 audio codec. 
+	  If unsure, say M.
+
 config SND_CODEC_ALC5623
 	tristate "ALC562(123) I2S audio codec."
 	depends on SND_NEXELL_I2S
@@ -79,3 +88,12 @@ config SND_CODEC_CS42L51_NX
 	depends on SND_NEXELL_I2S
 	select SND_SOC_CS42L51_NX
 
+
+config SND_CODEC_TC94B26
+	tristate "TC94B26 I2S audio codec"
+	depends on SND_NEXELL_SOC
+	select SND_NEXELL_SOC_I2S
+	select SND_SOC_TC94B26
+	help
+		say Y or M to enable SoC support for the TC94B26 audio codec.
+		If unsure, say M.

@@ -78,8 +78,8 @@ extern "C"
 	CBOOL		NX_DISPTOP_CLKGEN_GetInputInv( U32 ModuleIndex, U32 Index );
 
 	//--------
-	// Syncgen ¿ë Out Clock 1/2 ns delay Enable
-	//@added choiyk 2012-10-31 ¿ÀÈÄ 3:41:47
+	// Syncgen ï¿½ï¿½ Out Clock 1/2 ns delay Enable
+	//@added choiyk 2012-10-31 ï¿½ï¿½ï¿½ï¿½ 3:41:47
 	//---------
 	void NX_DISPTOP_CLKGEN_SetClockOutSelect( U32 ModuleIndex, U32 Index, CBOOL bBypass );
 
@@ -88,4 +88,4 @@ extern "C"
 }
 #endif
 
-#endif // __NX_DISPTOP_CLKGEN_H__
+#endif // __NX_DISPTOP_CLKGEN_H

@@ -20,6 +20,8 @@ obj-$(CONFIG_SND_CODEC_WM8976)		+= nxp-snd-wm8976.o
 obj-$(CONFIG_SND_CODEC_CS42L51_NX)		+= nxp-snd-cs42l51-nx.o
 obj-$(CONFIG_SND_SPDIF_TRANSCIEVER)	+= nxp-snd-spdif-transciever.o
 obj-$(CONFIG_SND_SPDIF_RECEIVER)	+= nxp-snd-spdif-receiver.o
+obj-$(CONFIG_SND_CODEC_LFP100) 		+= nxp-snd-lfp100.o
+obj-$(CONFIG_SND_CODEC_TC94B26)		+= nxp-snd-tc94b26.o
 
 nxp-snd-null-objs 					:= nxp-null.o
 nxp-snd-rt5631-objs 				:= nxp-rt5631.o
@@ -29,6 +31,7 @@ nxp-snd-wm8976-objs 				:= nxp-wm8978.o
 nxp-snd-cs42l51-nx-objs 				:= nxp-cs42l51-nx.o
 nxp-snd-spdif-transciever-objs 		:= nxp-spdif-transciever.o
 nxp-snd-spdif-receiver-objs 		:= nxp-spdif-receiver.o
-
+nxp-snd-lfp100-objs					:= nxp-lfp100.o
+nxp-snd-tc94b26-objs				:= nxp-tc94b26.o
 
 

@@ -273,6 +273,22 @@ config WIFI_CONTROL_FUNC
 	help
 	  Enables Power/Reset/Carddetect function abstraction
 
+config BCM43143
+        bool "BCM43143 build support"
+        depends on MMC || SPI || USB
+        select WIRELESS_EXT
+        select WEXT_PRIV
+        ---help---
+          Kernel support for the bcm43143 driver, dhd-cdc-sdmmc-gpl. This is
+          required for building the driver both in and out of tree.
+
+config ARCADYAN_BCM43143
+        tristate "Arcadyan BCM43143 Wifi Driver"
+        depends on MMC
+        select BCM43143
+        ---help---
+          This driver supports the BCM43143 based Arcadyan Wifi module.
+
 source "drivers/net/wireless/ath/Kconfig"
 source "drivers/net/wireless/b43/Kconfig"
 source "drivers/net/wireless/b43legacy/Kconfig"

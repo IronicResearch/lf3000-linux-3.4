@@ -201,6 +201,17 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
 		dwc_mdelay(100); 
 	}
 
+	/* Force device mode if config wants it that way */
+#ifdef CONFIG_USB_DWCOTG_FORCE_DEVICE
+	{
+		gusbcfg_data_t gusbcfg = {.d32 = 0 };
+		gusbcfg.d32 = DWC_READ_REG32(&core_if->core_global_regs->gusbcfg);
+		gusbcfg.b.force_dev_mode = 1;
+		DWC_WRITE_REG32(&core_if->core_global_regs->gusbcfg, gusbcfg.d32);
+		dwc_mdelay(100);
+	}
+#endif
+
 	DWC_DEBUGPL(DBG_CILV, "hwcfg1=%08x\n", core_if->hwcfg1.d32);
 	DWC_DEBUGPL(DBG_CILV, "hwcfg2=%08x\n", core_if->hwcfg2.d32);
 	DWC_DEBUGPL(DBG_CILV, "hwcfg3=%08x\n", core_if->hwcfg3.d32);
@@ -275,7 +286,7 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
 
 	/** ADP initialization */
 	dwc_otg_adp_init(core_if);
-	
+
 	return core_if;
 }
 

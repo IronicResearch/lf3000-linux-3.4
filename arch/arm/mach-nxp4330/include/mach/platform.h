@@ -80,7 +80,11 @@ void 	 		nxp_cpu_base_init(void);			/* No init section for suspend */
 void __init		nxp_cpu_clock_init(void);
 void __init		nxp_cpu_init_irq(void);
 
+#if defined(CONFIG_GPIO_LEAPFROG)
+void 	 		lf_board_base_init(void);			/* No init section for suspend */
+#else
 void 	 		nxp_board_base_init(void);			/* No init section for suspend */
+#endif
 
 void 			nxp_cpu_clock_resume(void);
 void			nxp_cpu_clock_print(void);
@@ -90,6 +94,7 @@ void 		 	nxp_cpu_shutdown(void);
 void 		 	nxp_cpu_core_shutdown(int core);
 void			nxp_cpu_goto_stop(void);
 void 		 	nxp_cpu_reset(char str, const char *cmd);
+unsigned int	nxp_cpu_periph_get_clock(int id, int *src, int *div);//Returns the calculated rate of periph clock, also writes the source PLL and the divider being used.
 unsigned int 	nxp_cpu_version(void);
 
 /* platform devices register */

@@ -360,7 +360,52 @@ struct uvc_buffer *uvc_queue_next_buffer(struct uvc_video_queue *queue,
 		return buf;
 	}
 
+#ifdef CONFIG_NXP4330_LEAPFROG	/*  Added to debug one type of crash */
+	if (   (buf->queue.next == LIST_POISON1)
+		|| (buf->queue.prev == LIST_POISON2))
+	{
+		printk(KERN_CRIT "uvc_queue_next_buffer(): "
+						 "buf already deleted from Q\n"
+						 "  buf 0x%08x,  &buf->queue 0x%08x\n"
+						 "  queue.next 0x%08x, queue.prev 0x%08x\n"
+						 "  state %d, error %d, len %d, bytesused %u\n",
+						 (unsigned int)buf, (unsigned int)&buf->queue,
+						 (unsigned int)buf->queue.next,
+						 (unsigned int)buf->queue.prev,
+						 buf->state, buf->error, buf->length,
+						 buf->bytesused);
+		printk(KERN_CRIT "  &queue->irqqueue 0x%08x\n"
+						 "  queue->irqqueue.next 0x%08x, irqqueue.prev 0x%08x\n"
+						 "  %s to buf->queue\n",
+						 (unsigned int)&queue->irqqueue,
+						 (unsigned int)queue->irqqueue.next,
+						 (unsigned int)queue->irqqueue.prev,
+						 (queue->irqqueue.next == &buf->queue)
+							? "points"
+							: "does not point");
+	}
+	else if (&buf->queue != queue->irqqueue.next) {
+		printk(KERN_CRIT "uvc_queue_next_buffer(): "
+						 "buf no longer the first in Q\n"
+						 "  queue->irqqueue.next 0x%08x, "
+						 "queue->irqqueue.prev 0x%08x\n"
+						 "    buf->queue.next 0x%08x, "
+						 "  buf->queue.prev 0x%08x\n"
+						 "  state %d, error %d, len %d, bytesused %u\n",
+						 (unsigned int)queue->irqqueue.next,
+						 (unsigned int)queue->irqqueue.prev,
+						 (unsigned int)buf->queue.next,
+						 (unsigned int)buf->queue.prev,
+						 buf->state, buf->error, buf->length,
+						 buf->bytesused);
+	}
+#endif	/* CONFIG_NXP4330_LEAPFROG */
+
 	spin_lock_irqsave(&queue->irqlock, flags);
+#ifdef CONFIG_NXP4330_LEAPFROG	/* call list_del() only if buf is still in Q */
+	if (   (buf->queue.next != LIST_POISON1)
+		&& (buf->queue.prev != LIST_POISON2))
+#endif
 	list_del(&buf->queue);
 	if (!list_empty(&queue->irqqueue))
 		nextbuf = list_first_entry(&queue->irqqueue, struct uvc_buffer,

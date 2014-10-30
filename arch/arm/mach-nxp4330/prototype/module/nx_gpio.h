@@ -192,6 +192,8 @@ void			NX_GPIO_SetPullSelect ( U32 ModuleIndex, U32 BitNumber, CBOOL enable);
 CBOOL			NX_GPIO_GetPullSelect ( U32 ModuleIndex, U32 BitNumber );
 void			NX_GPIO_SetPullSelect32 ( U32 ModuleIndex, U32 Value );
 U32				NX_GPIO_GetPullSelect32 ( U32 ModuleIndex );
+void			NX_GPIO_SetPullUpEnable ( U32 ModuleIndex, U32 BitNumber, CBOOL enable);
+CBOOL			NX_GPIO_GetPullUpEnable ( U32 ModuleIndex, U32 BitNumber );
 void			NX_GPIO_SetPullEnable ( U32 ModuleIndex, U32 BitNumber, CBOOL enable);
 CBOOL			NX_GPIO_GetPullEnable ( U32 ModuleIndex, U32 BitNumber );
 void			NX_GPIO_SetPullEnable32 ( U32 ModuleIndex, U32 Value );

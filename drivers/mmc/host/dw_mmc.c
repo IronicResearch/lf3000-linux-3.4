@@ -139,6 +139,38 @@ struct dw_mci_slot {
 
 static struct workqueue_struct *dw_mci_card_workqueue;
 
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+/*
+ * Card Detect Timer
+ */
+#define CFG_SDMMC0_DETECT_IO (39) /* FIXME: use macro defined in mach/cfg_main.h */
+static struct timer_list cd_timer;
+static struct completion cd_timer_done;
+static int still_going = 1;
+static int check_card_exists = 1;
+
+static void dw_mci_detect_card_removed( unsigned long data ) {
+	struct dw_mci *host = (struct dw_mci *)data;
+	int present;
+
+	if (!still_going) { /* complete work if not still_going */
+		complete( &cd_timer_done );
+		return;
+	}
+
+	/* Get current pin value */
+	present = nxp_soc_gpio_get_in_value(CFG_SDMMC0_DETECT_IO);
+
+	/* Since this timer has expired..if the pin in LOW (0),
+	 * then the card must have been removed. Queue work routine for
+	 * effective changes to take place.
+	 */
+	if (present == 0)
+    queue_work(dw_mci_card_workqueue, &host->card_work);
+  else
+    check_card_exists = 0;
+}
+#endif
 
 #if defined(CONFIG_ESP8089)
 #include <mach/platform.h>
@@ -1045,9 +1077,16 @@ static int dw_mci_get_cd(struct mmc_host *mmc)
 	/* Use platform get_cd function, else try onboard card detect */
 	if (brd->quirks & DW_MCI_QUIRK_BROKEN_CARD_DETECTION)
 		present = 1;
-	else if (brd->get_cd)
-		present = !brd->get_cd(slot->id);
-	else
+	else if (brd->get_cd) {
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+	  if (check_card_exists == 1)
+#endif
+	    present = !brd->get_cd(slot->id);
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+	  else
+	    present = slot->last_detect_state;
+#endif
+	}	else
 		present = (mci_readl(slot->host, CDETECT) & (1 << slot->id))
 			== 0 ? 1 : 0;
 
@@ -2269,10 +2308,34 @@ static void dw_mci_notify_change(struct platform_device *dev, int state)
 
 static irqreturn_t dw_mci_detect_interrupt(int irq, void *dev_id)
 {
-	struct dw_mci_slot *slot = dev_id;
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+  struct dw_mci_slot *slot = dev_id;
+  unsigned int ret;
+  int present, last;
 
-	queue_work(dw_mci_card_workqueue, &slot->host->card_work);
+  present = nxp_soc_gpio_get_in_value(CFG_SDMMC0_DETECT_IO);
+  last = slot->last_detect_state;
+  dev_dbg( &slot->host->dev, "%s: present = %i, last = %i\n", __func__, present, last );
 
+  if (present) {
+    /* was last detected state LOW? (card not inserted) */
+    if (last == 0)
+      queue_work(dw_mci_card_workqueue, &slot->host->card_work);
+    else /* card was already inserted */
+      check_card_exists = 0;
+  } else {
+    check_card_exists = 1;
+    if (last == 1) {
+      /* set timer */
+      dev_dbg( &slot->host->dev, "%s: CDETECT timer will fire in (%i)ms to detect card removal\n",
+                __func__, CONFIG_MMC_NEXELL_CH0_CDETECT_TIMEOUT );
+      ret = mod_timer( &cd_timer, jiffies + msecs_to_jiffies(CONFIG_MMC_NEXELL_CH0_CDETECT_TIMEOUT) );
+      if (ret)
+        /* RA: I set the below to be dev_dbg instead of dev_err to eliminate console noise */
+        dev_dbg( &slot->host->dev, "%s: Error with CDETECT timer! ret=%i (CAN PROBABLY IGNORE THIS)\n", __func__, ret );
+    }
+  }
+#endif
 	return IRQ_HANDLED;
 }
 

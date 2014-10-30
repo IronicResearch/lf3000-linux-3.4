@@ -71,7 +71,7 @@ config MTD_NAND_DENALI
         help
           Enable the driver for NAND flash on Intel Moorestown, using the
           Denali NAND controller core.
- 
+
 config MTD_NAND_DENALI_SCRATCH_REG_ADDR
         hex "Denali NAND size scratch register address"
         default "0xFF108018"
@@ -635,5 +635,13 @@ config MTD_NAND_MANUAL_ELP_PATH
 	default n
 	help
 	  Enable the use of the ECC generator with manual ELP path.
+
+
+config MTD_NAND_LFCART
+	tristate "LeapFrog Cartridge bus support"
+	default n
+	depends on (ARCH_CPU_NEXELL)
+	help
+	  This option enables the LeapFrog cartridge bus
 
 endif # MTD_NAND

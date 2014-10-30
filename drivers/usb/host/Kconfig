@@ -642,10 +642,29 @@ config USB_DWCOTG
 	  To compile this driver as a module, choose M here: the 
 	  modules built will be called dwc_otg and dwc_common_port.
 
+config USB_DWCOTG_FORCE_DEVICE
+	bool "Synopsis DWC force device mode"
+	depends on USB_DWCOTG
+	default n
+	help
+      The Synopsis DWC controller is a dual-role
+      host/peripheral/OTG ("On The Go") USB controllers.
+ 
+      Enable this option to force a Synopsis DWC controller into device
+      mode. If unsure, say N.
+
 config USB_CONNECT_NXP_DRV
 	bool "Nexell USB connect driver for UBC & OTG"
 	depends on USB_DWCOTG
 	default n
+
+config USB_DWCOTG_DEV_NODE
+	bool "DWC create dev node on connection"
+	depends on USB_DWCOTG
+	default n
+	help
+      Enable to create a device node and register the class in sysfs
+      upon physical connection state.
 
 config USB_IMX21_HCD
        tristate "i.MX21 HCD support"

@@ -37,6 +37,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_DA7210 if I2C
 	select SND_SOC_DFBMCS320
 	select SND_SOC_JZ4740_CODEC
+	select SND_SOC_LFP100 if I2C
 	select SND_SOC_LM4857 if I2C
 	select SND_SOC_MAX98088 if I2C
 	select SND_SOC_MAX98095 if I2C
@@ -51,6 +52,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_SSM2602 if SND_SOC_I2C_AND_SPI
 	select SND_SOC_STA32X if I2C
 	select SND_SOC_STAC9766 if SND_SOC_AC97_BUS
+	select SND_SOC_TC94B26 if I2C
 	select SND_SOC_TLV320AIC23 if I2C
 	select SND_SOC_TLV320AIC26 if SPI_MASTER
 	select SND_SOC_TLV320AIC32X4 if I2C
@@ -210,6 +212,10 @@ config SND_SOC_CX20442
 
 config SND_SOC_JZ4740_CODEC
 	tristate
+	
+# LeapFrog LFP100 Codec
+config SND_SOC_LFP100
+	tristate
 
 config SND_SOC_L3
        tristate
@@ -259,6 +265,9 @@ config SND_SOC_STA32X
 	tristate
 
 config SND_SOC_STAC9766
+	tristate
+	
+config SND_SOC_TC94B26
 	tristate
 
 config SND_SOC_TLV320AIC23

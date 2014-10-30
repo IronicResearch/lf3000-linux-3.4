@@ -1023,3 +1023,15 @@ void nxp_cpu_clock_resume(void)
 		}
 	}
 }
+
+unsigned int nxp_cpu_periph_get_clock(int id, int *src, int *div)
+{
+	struct clkgen_register *preg = clk_periphs[id].base_addr;
+	register U32 val;
+	unsigned int rate;
+
+	val  = ReadIODW(&preg->CLKGEN[0<<1]);
+	*src = (val >> 2) & 0x7;
+	*div = (val >> 5) & 0xff;
+	return nxp_cpu_clock_hz(*src);
+}

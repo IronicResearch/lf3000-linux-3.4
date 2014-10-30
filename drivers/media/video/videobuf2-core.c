@@ -1079,8 +1079,10 @@ static int __qbuf_dmabuf(struct vb2_buffer *vb, const struct v4l2_buffer *b)
 
 	/* Verify and copy relevant information provided by the userspace */
 	ret = __fill_vb2_buffer(vb, b, planes);
-	if (ret)
+	if (ret) {
+        printk("%s: failed to __fill_vb2_buffer()\n", __func__);
 		return ret;
+    }
 
 	for (plane = 0; plane < vb->num_planes; ++plane) {
 		struct dma_buf *dbuf = dma_buf_get(planes[plane].m.fd);

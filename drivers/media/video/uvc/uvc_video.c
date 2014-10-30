@@ -1043,6 +1043,11 @@ static int uvc_video_decode_start(struct uvc_streaming *stream,
 		uvc_trace(UVC_TRACE_FRAME, "Frame complete (FID bit "
 				"toggled).\n");
 		buf->state = UVC_BUF_STATE_READY;
+#if 0 //def CONFIG_NXP4330_LEAPFROG
+		printk(KERN_CRIT "uvc_video_decode_start: fid %d, stream->last_fid %d\n"
+						 "  set buf->state to %d\n",
+				fid, stream->last_fid, UVC_BUF_STATE_READY);
+#endif /* CONFIG_NXP4330_LEAPFROG */
 		return -EAGAIN;
 	}
 
@@ -1139,6 +1144,9 @@ static void uvc_video_decode_isoc(struct urb *urb, struct uvc_streaming *stream,
 {
 	u8 *mem;
 	int ret, i;
+#if 0 //def  CONFIG_NXP4330_LEAPFROG	/* 17sep14pm just for debugging a crash */
+	int j;
+#endif	/* CONFIG_NXP4330_LEAPFROG */
 
 	for (i = 0; i < urb->number_of_packets; ++i) {
 		if (urb->iso_frame_desc[i].status < 0) {
@@ -1152,12 +1160,27 @@ static void uvc_video_decode_isoc(struct urb *urb, struct uvc_streaming *stream,
 
 		/* Decode the payload header. */
 		mem = urb->transfer_buffer + urb->iso_frame_desc[i].offset;
+#if 0 //def  CONFIG_NXP4330_LEAPFROG	/* 17sep14pm */
+		j = 0;
+#endif	/* 17sep14pm */
 		do {
 			ret = uvc_video_decode_start(stream, buf, mem,
 				urb->iso_frame_desc[i].actual_length);
+#if 0 //def  CONFIG_NXP4330_LEAPFROG	/* 17sep14 */
+			if (ret == -EAGAIN)
+			{
+				printk(KERN_CRIT "uvc_video_decode_isoc: -EAGAIN: "
+								 "i %d (of %d), j %d\n",
+						i, urb->number_of_packets, j);
+				++j;
+				buf = uvc_queue_next_buffer(&stream->queue,
+							    buf);
+			}
+#else
 			if (ret == -EAGAIN)
 				buf = uvc_queue_next_buffer(&stream->queue,
 							    buf);
+#endif	/* CONFIG_NXP4330_LEAPFROG */
 		} while (ret == -EAGAIN);
 
 		if (ret < 0)
@@ -1315,11 +1338,35 @@ static void uvc_video_complete(struct urb *urb)
 		return;
 	}
 
+#ifdef CONFIG_NXP4330_LEAPFROG	/* 18sep14  just for debugging */
+	ret = 0;
+	spin_lock_irqsave(&queue->irqlock, flags);
+	if (!list_empty(&queue->irqqueue)) {
+		buf = list_first_entry(&queue->irqqueue, struct uvc_buffer,
+				       queue);
+		if (buf && (buf->queue.prev != &queue->irqqueue))
+			ret = 1;
+	}
+	spin_unlock_irqrestore(&queue->irqlock, flags);
+
+	if (ret)
+		printk(KERN_CRIT "%s() found first Q entry deleted\n"
+						 "  &queue->irqqueue (0x%x): %x, %x\n"
+						 "  buf->queue (0x%x): %x, %x\n",
+						__func__,
+						(unsigned int)&queue->irqqueue,
+						(unsigned int)queue->irqqueue.prev,
+						(unsigned int)queue->irqqueue.next,
+						(unsigned int)&buf->queue,
+						(unsigned int)buf->queue.prev,
+						(unsigned int)buf->queue.next);
+#else	/* previous code */
 	spin_lock_irqsave(&queue->irqlock, flags);
 	if (!list_empty(&queue->irqqueue))
 		buf = list_first_entry(&queue->irqqueue, struct uvc_buffer,
 				       queue);
 	spin_unlock_irqrestore(&queue->irqlock, flags);
+#endif
 
 	stream->decode(urb, stream, buf);
 

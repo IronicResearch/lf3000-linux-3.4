@@ -97,6 +97,8 @@ config VIDEOBUF2_ION_NXP
 
 source "drivers/media/video/nexell/Kconfig"
 
+source "drivers/media/video/lf2000/Kconfig"
+
 #
 # Multimedia Video device configuration
 #
@@ -796,6 +798,12 @@ config VIDEO_S5K6AA
 	  This is a V4L2 sensor-level driver for Samsung S5K6AA(FX) 1.3M
 	  camera sensor with an embedded SoC image signal processor.
 
+config VIDEO_HI253
+    tristate "Hynix HI253 2M pixel camera sensor support"
+    depends on I2C && VIDEO_V4L2
+    ---help---
+      This driver supports Hynix HI253 SoC camera module for V4L2 Media API.
+
 comment "Flash devices"
 
 config VIDEO_ADP1653
@@ -1296,6 +1304,12 @@ config SOC_CAMERA_OV9740
 	depends on SOC_CAMERA && I2C
 	help
 	  This is a ov9740 camera driver
+
+config SOC_CAMERA_HI253
+	tristate "hi253 camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a V4L2 SoC camera driver for Hynix HI253 2MP sensors
 
 config MX1_VIDEO
 	bool

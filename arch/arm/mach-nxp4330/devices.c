@@ -30,6 +30,7 @@
 #include <linux/amba/bus.h>
 #include <linux/amba/serial.h>
 #include <linux/dma-mapping.h>
+#include <linux/lf3000/gpio.h>
 #include <linux/pm_runtime.h>
 
 /* nexell soc headers */
@@ -1240,6 +1241,10 @@ struct platform_device nxp_device_ion = {
 };
 
 #endif /* CONFIG_ION_NXP */
+
+#if defined(CONFIG_GPIO_LEAPFROG)
+void lf3000_gpio_init(void);
+#endif /* CONFIG_GPIO_LEAPFROG */
 
 /*------------------------------------------------------------------------------
  * ADC

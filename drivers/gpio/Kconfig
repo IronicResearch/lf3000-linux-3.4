@@ -564,4 +564,11 @@ config GPIO_NEXELL_GROUP_ALV
 	  Select this option to enable GPIO driver for the Nexell
 	  chip family.
 
+config GPIO_LEAPFROG
+	bool "LeapFrog GPIO Mapping Scheme"
+	depends on ARCH_CPU_NEXELL
+	help
+	  Select this option to use the LeapFrog virtual/physical
+	  GPIO mapping scheme instead of the Nexell GPIO driver.
+
 endif

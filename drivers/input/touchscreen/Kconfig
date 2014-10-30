@@ -923,4 +923,103 @@ config TOUCHSCREEN_GOODIX
           Say Y here if you have the GOODIX touchscreen.
 
           If unsure, say N.
+
+config TOUCHSCREEN_ICN83xx_IIC
+	tristate "ICN83XX_IIC (K&D) based touchscreens"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you have the ICN83XX_IIC (K&D) based touchscreen.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_ICN85xx_IIC
+	tristate "ICN85XX_IIC (K&D) based touchscreens"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you have the ICN85XX_IIC (K&D-1) based touchscreen.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_PAP11XX
+	tristate "PixArt PAP11XX (SDS) TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the PixArt PAP11XX (SDS) TouchScreen
+	  controller.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_ELAN_KTF2K
+	tristate "ELAN KTF2K (Arima) 5 inch TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the ELAN KTF2K (Arima) TouchScreen
+	  controller.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_BCD_AP386X
+	tristate "BCD AP386X (NVD) TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the BCD AP386X (NVD) TouchScreen
+	  controller.
+
+	  If unsure, say N. 
+
+config TOUCHSCREEN_MStar_MSG21xxA
+	tristate "MStar (GP old) TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the MStar (GP old) TouchScreen
+	  controller.
+
+	  If unsure, say N. 
+
+config TOUCHSCREEN_Ilitek_2839
+	tristate "Ilitek (GP) TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Ilitek (GP) 5 inch TouchScreen
+	  controller.
+
+	  If unsure, say N. 
+
+config TOUCHSCREEN_Ilitek_2839_7INCH
+	tristate "Ilitek (GP) 7 inch TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Ilitek (GP) 7 inch TouchScreen
+	  controller.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_Goodix_GT967_7INCH
+	tristate "Goodix GT967 (GP) 7 inch TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the Goodix GT967 (GP) 7 inch TouchScreen
+	  controller.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_ELAN_KTF2K_7INCH
+	tristate "ELAN KTF2K (Arima) 7 inch TouchScreen driver"
+	depends on I2C
+	default n
+	help
+	  Say Y here to enable support for the ELAN KTF2K (Arima) 7 inch TouchScreen
+	  controller.
+
+	  If unsure, say N.
+
 endif
