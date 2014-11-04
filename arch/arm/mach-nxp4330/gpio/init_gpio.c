@@ -106,8 +106,8 @@ static void bd_gpio_init(void)
 
 	switch(system_rev) {
 
-	case LF3000_BOARD_BOGATA:
-		p_io_pad = &io_pad_bogata_alpha;
+	case LF3000_BOARD_BOGOTA:
+		p_io_pad = &io_pad_bogota_alpha;
 		break;
 
 	case LF3000_BOARD_CABO:
@@ -143,8 +143,8 @@ static void bd_gpio_init(void)
 		break;
 
 	default:
-#if   defined(CONFIG_PLAT_NXP4330_BOGATA)
-		p_io_pad = &io_pad_bogata_alpha;
+#if   defined(CONFIG_PLAT_NXP4330_BOGOTA)
+		p_io_pad = &io_pad_bogota_alpha;
 #elif defined(CONFIG_PLAT_NXP4330_CABO)
 		p_io_pad = &io_pad_cabo_alpha;
 #elif defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA)
@@ -215,8 +215,8 @@ static void bd_alive_init(void)
 
 	switch(system_rev) {
 
-	case LF3000_BOARD_BOGATA:
-		p_alv_pad = &alv_pad_bogata_alpha;
+	case LF3000_BOARD_BOGOTA:
+		p_alv_pad = &alv_pad_bogota_alpha;
 		break;
 
 	case LF3000_BOARD_CABO:
@@ -252,8 +252,8 @@ static void bd_alive_init(void)
 		break;
 
 	default:
-#if    defined(CONFIG_PLAT_NXP4330_BOGATA)
-		p_alv_pad = &alv_pad_bogata_alpha;
+#if    defined(CONFIG_PLAT_NXP4330_BOGOTA)
+		p_alv_pad = &alv_pad_bogota_alpha;
 #elif  defined(CONFIG_PLAT_NXP4330_CABO)
         p_alv_pad = &alv_pad_cabo_alpha;
 #elif  defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA)

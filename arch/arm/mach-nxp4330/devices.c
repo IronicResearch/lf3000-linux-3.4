@@ -740,6 +740,82 @@ static struct platform_device spdif_device_rx = {
 };
 #endif	/* CONFIG_SND_NEXELL_SPDIF_RX || CONFIG_SND_NEXELL_SPDIF_RX_MODULE */
 
+
+/*------------------------------------------------------------------------------
+ * BCM43143 WIFI module
+ */
+
+#if defined(CONFIG_BCM43143)
+
+//FIXME (FMirani) : These routines are called when the WIFI driver loads.  
+//                  We are not really doing anything here since tha WIFI module does   
+//                  not respond if the WIFI_RESET pin is toggled dynamically. It
+//                  is set to high when the GPIOs are initialized and we are not turning 
+//                  it low any time. 
+
+
+void bcm_wlan_power_on(int param)
+{
+	printk("\n BCM43143 [dhd.ko] - bcm_wlan_power_on");
+//	gpio_set_value(WIFI_RESET, 0);
+//	mdelay(10);
+//	gpio_set_value(WIFI_RESET, 1);
+//	mdelay(1000);	
+}
+
+EXPORT_SYMBOL(bcm_wlan_power_on);
+
+void bcm_wlan_power_off(int param)
+{
+	printk("\n BCM43143 [dhd.ko] - bcm_wlan_power_off");
+	//mdelay(10);
+	//gpio_set_value(WIFI_RESET, 0);
+}
+
+EXPORT_SYMBOL(bcm_wlan_power_off);
+
+#endif	//BCM43143
+
+/*------------------------------------------------------------------------------
+ * TI WIFI module
+ */
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)	
+ 
+struct wl12xx_platform_data nxp4430_wlan_data;
+#if 1
+static void wl_set_power(u32 slot_id, u32 on)
+{
+	if (on) {
+		printk("WIFI_RESET: ON\n");
+		gpio_set_value(WIFI_RESET, 1);
+		mdelay(70);
+	}
+	else
+	{
+		printk("WIFI_RESET: OFF\n");
+		gpio_set_value(WIFI_RESET, 0);
+	}
+}
+#endif
+
+static void wl12xx_init()
+{
+	struct device *dev;
+	struct omap_mmc_platform_data *pdata;
+
+	nxp4430_wlan_data.irq = gpio_to_irq(WIFI_HOST_WAKE);
+	nxp4430_wlan_data.platform_quirks = WL12XX_PLATFORM_QUIRK_EDGE_IRQ;
+	if(wl12xx_set_platform_data(&nxp4430_wlan_data))
+		pr_err("error setting wl12xx data\n");
+
+	_dwmci2_data.setpower = wl_set_power;
+
+
+	return;
+}
+
+#endif
+
 /*------------------------------------------------------------------------------
  * SSP/SPI
  */
@@ -775,7 +851,6 @@ static void spi_init(int ch)
     nxp_soc_rsc_exit(reset[ch][1]);
 	clk_enable(clk);
 }
-
 #if defined(CONFIG_SPI_PL022_PORT0)
 
 static struct pl022_ssp_controller ssp0_platform_data = {

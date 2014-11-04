@@ -332,7 +332,7 @@ static int __init lf3000_adc_probe(struct platform_device *pdev)
 	}
 
 	mem_adc = request_mem_region(res->start, (res->end - res->start) + 1,
-			ADC_DEV_NAME);
+			DEV_NAME_ADC);
 
 	if (mem_adc == NULL) {
 		printk(KERN_ERR "ADC: failed to map ADC region\n");
@@ -368,7 +368,7 @@ static int __exit lf3000_adc_remove(struct platform_device *pdev)
 static struct platform_driver lf3000_adc_driver = {
 	.remove = __exit_p(lf3000_adc_remove),
 	.driver		= {
-		.name	= ADC_DEV_NAME,
+		.name	= DEV_NAME_ADC,
 		.owner	= THIS_MODULE,
 	},
 };

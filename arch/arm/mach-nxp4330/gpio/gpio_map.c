@@ -33,7 +33,7 @@ int gpio_map[GPIO_NUMBER_VALUES];
  */
  //Placeholders
 
-static void init_bogata(void)
+static void init_bogota(void)
 {
 	printk(KERN_WARNING "%s: R3K GPIO mapping\n", __func__);
 
@@ -1125,9 +1125,9 @@ void lf3000_gpio_init_map(void)
 			printk(KERN_ERR "%s GPIO mapping does not support " \
 				"Board Revision = 0x%X\n",
 				__func__, system_rev);
-#if   defined(CONFIG_PLAT_NXP4330_BOGATA)
-			printk(KERN_WARNING "defaulting to BOGATA GPIO mapping\n");
-			init_bogata();
+#if   defined(CONFIG_PLAT_NXP4330_BOGOTA)
+			printk(KERN_WARNING "defaulting to BOGOTA GPIO mapping\n");
+			init_bogota();
 #elif defined(CONFIG_PLAT_NXP4330_CABO)
 			printk(KERN_WARNING "defaulting to CABO GPIO mapping\n");
 			init_cabo();

@@ -36,8 +36,12 @@ extern void 		nxp_soc_gpio_set_io_func(unsigned int io, unsigned int func);
 extern unsigned int nxp_soc_gpio_get_io_func(unsigned int io);
 extern void 		nxp_soc_gpio_set_io_dir(unsigned int io, int out);
 extern int 		 	nxp_soc_gpio_get_io_dir(unsigned int io);
-extern void 		nxp_soc_gpio_set_io_pullup(unsigned int io, int on);
-extern int 		 	nxp_soc_gpio_get_io_pullup(unsigned int io);
+extern void 		nxp_soc_gpio_set_io_pull_enb(unsigned int io, int on);
+extern int 		 	nxp_soc_gpio_get_io_pull_enb(unsigned int io);
+extern void 		nxp_soc_gpio_set_io_pull_sel(unsigned int io, int on);
+extern int 		 	nxp_soc_gpio_get_io_pull_sel(unsigned int io);
+extern void			nxp_soc_gpio_set_io_drv(int gpio, int mode);
+extern int			nxp_soc_gpio_get_io_drv(int gpio);
 extern void			nxp_soc_gpio_set_out_value(unsigned int io, int high);
 extern int 		 	nxp_soc_gpio_get_out_value(unsigned int io);
 extern int 		 	nxp_soc_gpio_get_in_value(unsigned int io);
@@ -119,51 +123,49 @@ unsigned int nxp_soc_disp_video_stat_vfilter(int module);
 void 		 nxp_soc_disp_video_set_enable	(int module, int enable);
 int 		 nxp_soc_disp_video_stat_enable	(int module);
 
+/* psw0523 add for video out source crop */
+void         nxp_soc_disp_video_set_crop(int module, bool enable, int left, int top, int width, int height, int waitvsync);
+
 /* top layer control on multi layer */
 void 		 nxp_soc_disp_get_resolution(int module, int *w, int *h);
 void 		 nxp_soc_disp_set_bg_color(int module, unsigned int color);
 unsigned int nxp_soc_disp_get_bg_color(int module);
-void 		 nxp_soc_disp_video_set_crop(int module, bool enable, int left, int top, int width, int height, int waitvsync);
-
 void 		 nxp_soc_disp_layer_set_enable (int module, int layer, int enable);
 int 		 nxp_soc_disp_layer_stat_enable(int module, int layer);
-struct disp_irq_callback *nxp_soc_disp_register_irq_callback(int module, void (*callback)(void *), void *data);
-void nxp_soc_disp_unregister_irq_callback(int module, struct disp_irq_callback *callback)
-;
 int 		 nxp_soc_disp_wait_vertical_sync(int module);	/* syncgen's interrupt */
-unsigned int nxp_soc_disp_stat_vertical_sync(int module);
+struct disp_irq_callback *nxp_soc_disp_register_irq_callback(int module, void (*callback)(void *), void *data);
+void		 nxp_soc_disp_unregister_irq_callback(int module, struct disp_irq_callback *);
 
 /*
  * display device control: refer to display.h
- * device 0=resconv, 1=lcdif, 2=hdmi, 3=mipi, 4=lvds, 5=syncgen0, 6=syncgen1
+ * device 0=resconv, 1=lcd, 2=hdmi, 3=mipi, 4=lvds, 5=syncgen0, 6=syncgen1
  */
-int			 nxp_soc_disp_device_connect_to	(int device, int to, struct disp_vsync_info *vsync);
-void	     nxp_soc_disp_device_disconnect (int device, int to);
+void 		 nxp_soc_disp_register_proc_ops(enum disp_dev_type device, struct disp_process_ops *ops);
+void         nxp_soc_disp_register_priv(enum disp_dev_type device, void *priv);
+int			 nxp_soc_disp_device_connect_to(enum disp_dev_type device, enum disp_dev_type to, struct disp_vsync_info *vsync);
+void	     nxp_soc_disp_device_disconnect(enum disp_dev_type device, enum disp_dev_type to);
 
-void		 nxp_soc_disp_device_get_vsync	(int device, struct disp_vsync_info *vsync);
-void		 nxp_soc_disp_device_set_vsync	(int device, struct disp_vsync_info *vsync);
-int			 nxp_soc_disp_device_get_param	(int device, void *par, int parlen);
-int			 nxp_soc_disp_device_set_param	(int device, void *par, int parlen);
-int			 nxp_soc_disp_device_get_sync_param(enum disp_dev_type device, struct disp_syncgen_par *sync_par);
-int			 nxp_soc_disp_device_set_sync_param(enum disp_dev_type device, struct disp_syncgen_par *sync_par);
-int 		 nxp_soc_disp_device_enable		(int device, int enable);
+int			 nxp_soc_disp_device_set_sync_param	(enum disp_dev_type device, struct disp_syncgen_par *sync_par);
+int			 nxp_soc_disp_device_get_sync_param	(enum disp_dev_type device, struct disp_syncgen_par *sync_par);
+int			 nxp_soc_disp_device_set_vsync_info	(enum disp_dev_type device, struct disp_vsync_info *vsync);
+int			 nxp_soc_disp_device_get_vsync_info	(enum disp_dev_type device, struct disp_vsync_info *vsync);
+
+int			 nxp_soc_disp_device_set_dev_param  (enum disp_dev_type device, void *param);
+
+int 		 nxp_soc_disp_device_enable		(enum disp_dev_type device, int enable);
+int 		 nxp_soc_disp_device_stat_enable(enum disp_dev_type device);
+
+int 		 nxp_soc_disp_device_suspend	(enum disp_dev_type device);
+void 		 nxp_soc_disp_device_resume 	(enum disp_dev_type device);
+
+void		 nxp_soc_disp_device_framebuffer(int module, int fb);
 int 		 nxp_soc_disp_device_enable_all	(int module, int enable);
-int 		 nxp_soc_disp_device_stat_enable(int device);
-void 		 nxp_soc_disp_device_reset_top(void);
-
-int 		 nxp_soc_disp_device_suspend	(int device);
-void 		 nxp_soc_disp_device_resume 	(int device);
 int 		 nxp_soc_disp_device_suspend_all(int module);
 void 		 nxp_soc_disp_device_resume_all	(int module);
+void 		 nxp_soc_disp_device_reset_top	(void);
+int 		 nxp_soc_disp_device_enable_all_saved(int module, int enable);
 
-void 		nxp_soc_disp_setup_proc_device(int device, unsigned int base,
-											struct disp_process_ops *ops, void *param);
 void 		 nxp_soc_disp_register_lcd_ops(int module, struct lcd_operation *pops);
-
-/* hdmi */
-void        nxp_soc_disp_hdmi_initialize(void);
-int         nxp_soc_disp_hdmi_enable(int enable);
-int         nxp_soc_disp_hdmi_set_preset(int preset);
 
 /*
  *
