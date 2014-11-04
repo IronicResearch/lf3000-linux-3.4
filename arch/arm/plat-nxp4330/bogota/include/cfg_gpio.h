@@ -203,7 +203,7 @@
  *      Specific Board Defines
  */
 
-#include <../../bogata/include/cfg_gpio_bogata_alpha.h>
+#include <../../bogota/include/cfg_gpio_bogota_alpha.h>
 #include <../../cabo/include/cfg_gpio_cabo_alpha.h>
 #include <../../glasgow/include/cfg_gpio_glasgow_alpha.h>
 #include <../../glasgow/include/cfg_gpio_glasgow_beta.h>

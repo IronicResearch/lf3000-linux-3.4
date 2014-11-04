@@ -1,7 +1,7 @@
 #ifndef __DIDJ_LFP100_H__
 #define __DIDJ_LFP100_H__
 
-#include <plat/lfp100.h>
+#include <mach/lfp100.h>
 
 /* register to value */
 u8 lfp100_common_settings[][2] = {

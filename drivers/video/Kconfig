@@ -2453,11 +2453,26 @@ config FB_NEXELL
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
-	select NEXELL_SOC_DISP
+	select NEXELL_DISPLAY
 	---help---
 	  Frame buffer driver for the built-in display controller in the Nexell Co.
 	  Nexell processor.
 	  Say Y here to enable support for the display adaptor.
+
+config FB_NEXELL_PRI
+	bool "Support primary   frame buffer (/dev/fb0)"
+	depends on FB_NEXELL
+	default y
+
+config FB_NEXELL_SEC
+	bool "Support secondary frame buffer (/dev/fb1)"
+	depends on FB_NEXELL
+	default n
+
+config FB_NEXELL_LFEXT
+	bool "Support LF per-layer framebuffer extensions (/dev/fb0..fb2)"
+	depends on FB_NEXELL
+	default n
 
 source "drivers/video/omap/Kconfig"
 source "drivers/video/omap2/Kconfig"

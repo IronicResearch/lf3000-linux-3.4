@@ -1089,9 +1089,8 @@ source "arch/arm/mach-mxs/Kconfig"
 
 source "arch/arm/mach-netx/Kconfig"
 
-if ARCH_NXP4330
 source "arch/arm/mach-nxp4330/Kconfig"
-endif
+source "arch/arm/plat-nxp4330/Kconfig"
 
 source "arch/arm/mach-nomadik/Kconfig"
 source "arch/arm/plat-nomadik/Kconfig"

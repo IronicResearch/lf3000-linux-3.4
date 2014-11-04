@@ -20,7 +20,7 @@
 #include <mach/platform.h>
 #include <mach/pwm.h>
 #include <mach/gpio.h>
-#include <plat/lfp100.h>
+#include <mach/lfp100.h>
 
 #define LF2000_NO_BRIGHTNESS		 -1	// brightness not set
 #define LF2000_INITIAL_BRIGHTNESS	318	// nominal second brightest

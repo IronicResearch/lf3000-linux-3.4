@@ -38,7 +38,7 @@
 
 #include <mach/soc.h>
 
-#include <mach/cfg_type.h>
+#include <cfg_type.h>
 #include <mach/platform.h>
 
 struct goodix_ts_data {

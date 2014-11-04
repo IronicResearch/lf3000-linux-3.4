@@ -149,7 +149,9 @@ obj-$(CONFIG_FB_NUC900)           += nuc900fb.o
 obj-$(CONFIG_FB_JZ4740)		  += jz4740_fb.o
 obj-$(CONFIG_FB_PUV3_UNIGFX)      += fb-puv3.o
 #obj-$(CONFIG_ARCH_CPU_NEXELL)	  += nexell/
-obj-$(CONFIG_FB_NEXELL)			  += nxp-fb.o
+obj-$(CONFIG_FB_NEXELL_PRI)		  += nxp-fb.o
+obj-$(CONFIG_FB_NEXELL_SEC)		  += nxp-fb.o
+obj-$(CONFIG_FB_NEXELL_LFEXT)	  += nxp-fb-lfext.o
 
 # Platform or fallback drivers go here
 obj-$(CONFIG_FB_UVESA)            += uvesafb.o

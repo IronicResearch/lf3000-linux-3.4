@@ -70,8 +70,8 @@
 #include <linux/input/mt.h>
 
 #include <mach/soc.h>
-#include <mach/cfg_type.h>
-#include <mach/ektf2k7.h>
+#include <cfg_type.h>
+#include <plat/ektf2k7.h>
 // #include "ektf2k7.h" // also used by device.c
 
 #ifdef ELAN_TEN_FINGERS

@@ -24,7 +24,7 @@
 #if COMPILE_FW_WITH_DRIVER
 #if SUPPORT_NXP4330 && defined(CONFIG_PLAT_NXP4330_CABO)
 #include "icn85xx_fw_cabo.h"
-#elif SUPPORT_NXP4330 && defined(CONFIG_PLAT_NXP4330_XANADU)
+#elif SUPPORT_NXP4330 && (defined(CONFIG_PLAT_NXP4330_XANADU) || defined(CONFIG_PLAT_NXP4330_BOGOTA))
 #include "icn85xx_fw_xanadu.h"
 #else
 #include "icn85xx_fw.h"

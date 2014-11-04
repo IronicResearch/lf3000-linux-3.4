@@ -10,7 +10,8 @@ set +x		# -x=debug on, +x=debug off
 # CROSS_COMPILE         : The root name of the cross compiler
 # DEPLOY_PATH           : Where to place the build output
 # LINUX_VERSION         : Linux version to compile
-# PARENT_DIR            : The parent directory above in the build tree
+# PARENT_DIR            : The directory directly above in the build tree
+# GRANDPARENT_DIR       : The directory two levels above in the build tree
 # ROOTFS_PATH		: Location to build Linux modules at
 # TARGET_MACH           : The default kernel image to construct
 
@@ -35,7 +36,7 @@ fi
 
 # check for TARGET_MACH, use default if none provided
 if [ "x$TARGET_MACH" == "x" ]; then
-	export TARGET_MACH=nxp4330_cabo_defconfig
+	export TARGET_MACH=nxp4330_bogota_defconfig
 fi
 echo "*** Using TARGET_MACH=$TARGET_MACH ***"
 
@@ -45,11 +46,14 @@ if [ "x$CROSS_COMPILE" == "x" ]; then
         echo "CROSS_COMPILE not set, setting to $CROSS_COMPILE"
 fi
 
-# Base other directories relative to our parent dir
+# Base other directories relative to our grand parent dir
 export PARENT_DIR=`dirname $PWD`
+echo "*** Using PARENT_DIR=$PARENT_DIR ***"
+export GRANDPARENT_DIR=`dirname $PARENT_DIR`
+echo "*** Using GRANDPARENT_DIR=$GRANDPARENT_DIR ***"
 
 if [ "x$DEPLOY_PATH" == "x" ]; then
-        export DEPLOY_PATH=..$PARENT_DIR/deploy
+        export DEPLOY_PATH=$GRANDPARENT_DIR/deploy
 fi
 
 echo "*** Using DEPLOY_PATH=$DEPLOY_PATH ***"

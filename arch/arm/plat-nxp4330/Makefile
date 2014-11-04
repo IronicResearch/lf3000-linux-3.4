@@ -51,8 +51,8 @@ ifeq ($(CONFIG_PLAT_NXP4330_MOON),y)
 PLATBOARD :=moon
 endif
 
-ifeq ($(CONFIG_PLAT_NXP4330_BOGATA),y)
-PLATBOARD :=bogata
+ifeq ($(CONFIG_PLAT_NXP4330_BOGOTA),y)
+PLATBOARD :=bogota
 endif
 
 #

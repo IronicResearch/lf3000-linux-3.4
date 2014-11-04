@@ -64,7 +64,7 @@ static struct platform_device *fb_devices[] = {
 /*------------------------------------------------------------------------------
  * MIPI device
  */
-#if defined (CONFIG_NEXELL_SOC_DISPLAY_MIPI)
+#if defined (CONFIG_NEXELL_DISPLAY_MIPI)
 #include <linux/delay.h>
 
 #define	MIPI_BITRATE_750M
@@ -146,7 +146,7 @@ static void __init nxp_fb_device_register(void)
 	platform_add_devices(fb_devices, ARRAY_SIZE(fb_devices));
 #endif
 
-#if defined (CONFIG_NEXELL_SOC_DISPLAY_MIPI)
+#if defined (CONFIG_NEXELL_DISPLAY_MIPI)
 	printk("plat: add device mipi \n");
 	nxp_platform_disp_device_data(DISP_DEVICE_MIPI, NULL, (void*)mipi_param, mipi_syncgen_par);
 #endif
