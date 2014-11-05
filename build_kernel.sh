@@ -35,7 +35,7 @@ if [ "$MODS" != "" ]; then
 	fi
 	tar -zvcf modules.tar.gz lib/
 fi
-#cd ../../
+cd ../
 
 
 
