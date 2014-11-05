@@ -84,7 +84,7 @@
 #include <linux/slab.h>
 #include <mach/soc.h>
 
-#include <mach/cfg_type.h>
+#include <cfg_type.h>
 #include <mach/platform.h>
 
 #define FILE_UPDATE_FW

@@ -23,7 +23,7 @@
 #include <linux/slab.h>
 #include "lfp100.h"
 
-#include <plat/lfp100.h>
+#include <mach/lfp100.h>
 
 #define CODEC_NAME	"lfp100-codec"
 

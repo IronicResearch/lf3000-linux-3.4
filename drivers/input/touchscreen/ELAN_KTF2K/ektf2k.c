@@ -61,7 +61,7 @@
 #include <linux/proc_fs.h>
 #include <linux/wakelock.h>
 #include <mach/soc.h>
-#include <mach/cfg_type.h>
+#include <cfg_type.h>
 #include <mach/ektf2k.h>
 // #include "ektf2k.h" // also used by device.c
 

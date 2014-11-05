@@ -15,7 +15,7 @@
 //------------------------------------------------------------------------------
 #include <nx_chip.h>
 #include "nx_adc.h"
-#include <string.h> // for memset
+#include <linux/string.h> // for memset
 
 static	NX_ADC_RegisterSet *__g_pRegister[NUMBER_OF_ADC_MODULE];
 

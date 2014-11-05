@@ -27,7 +27,7 @@
  * 	System Name
  */
 #define	CFG_SYS_CPU_NAME						"nxp4330q"
-#define	CFG_SYS_BOARD_NAME						"nxp4330-bogata"
+#define	CFG_SYS_BOARD_NAME						"nxp4330-bogota"
 
 /*------------------------------------------------------------------------------
  * 	BUS config

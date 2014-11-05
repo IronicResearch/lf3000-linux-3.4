@@ -1,10 +1,10 @@
 #
 # Copyright 2009 Nexell Co.
 #
-# Makefile for the NNXP CPU
+# Makefile for the NXP CPU
 
 obj-y += rsc.o gpio.o
-
+obj-$(CONFIG_ADC_NEXELL)			+= adc.o
 obj-$(CONFIG_NEXELL_SOC_PWM)		+= pwm.o
 obj-$(CONFIG_NEXELL_DISPLAY)		+= display.o
 obj-$(CONFIG_NEXELL_DISPLAY_LCD)	+= display_lcd.o

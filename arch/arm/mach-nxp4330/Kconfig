@@ -4,7 +4,10 @@
 
 config ARCH_CPU_NEXELL
 	bool
+	depends on ARCH_NXP4330
 	default y
+	
+if ARCH_CPU_NEXELL
 
 choice
 	prompt "Prototype build mode"
@@ -38,7 +41,7 @@ config FORCE_MAX_ZONEORDER
    	default 12 if MEM_MAX_ORDER_12
    	default 13 if MEM_MAX_ORDER_13
 
-comment "CPU feature"
+comment "CPU features"
 
 config SUSPEND_IDLE
 	bool "Goto idle when Suspend"
@@ -101,6 +104,51 @@ config NEXELL_DISPLAY_RESCONV
 	depends on NEXELL_DISPLAY
 	default n
 
+config ADC_NEXELL
+	tristate "Nexell ADC"
+	depends on ARCH_NXP4330
+	default y
+	---help---
+	This option enables the Nexell ADC driver.  
+
+config SOC_LFP100
+	tristate "Support for the LFP100/LFP200/LFP300/LFP400 audio/power/backlight chip"
+	default y
+	---help---
+	This option enables platform support for the LFP100 combination
+	chip.  It is checked at runtime.  If you are unsure, say Y.
+	This option is only for all LeapFrog boards. 
+
+config BQ24250_CHARGER
+	bool "BQ24250 Charger"
+	default y
+	---help---
+	This option enables BQ24250 charger chip driver. This driver is only required for Cabo.
+
+config TC7734_PMIC
+	bool "TC7734 PMIC"
+	default n
+	---help---
+	This option enables the TC7734 PMIC driver.
+
+choice
+        prompt "System Power Down Mode"
+        default POWER_DOWN_STANDBY
+	---help---
+	This option chooses whether the system completely powers off or goes into standby mode.
+
+config  POWER_DOWN_OFF
+        bool "Off"
+	---help---
+	Place system in OFF mode
+
+config  POWER_DOWN_STANDBY
+        bool "Standby"
+	---help---
+	Place system in STANDBY mode
+
+endchoice
+
 config NEXELL_DFS_BCLK
     bool "DFS For BCLK"
     default n
@@ -129,6 +177,5 @@ config ANDROID_PERSISTENT_RAM_CONS_SIZE
     default 16
 
 source "kernel/Kconfig.hz"
-source "arch/arm/plat-nxp4330/Kconfig"
 
-
+endif

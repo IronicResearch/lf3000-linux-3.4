@@ -46,11 +46,11 @@
 
 #include <mach/platform.h>
 #include <plat/power.h>
-#include <plat/lfp100.h>
-#include <plat/tc7734.h>
+#include <mach/lfp100.h>
+#include <mach/tc7734.h>
 #include <mach/adc.h>
 #include <mach/soc.h>
-#include <plat/bq24250-charger.h>
+#include <mach/bq24250-charger.h>
 
 #ifdef CONFIG_ARCH_LF1000
 #include <mach/adc.h>

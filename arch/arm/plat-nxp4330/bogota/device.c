@@ -24,13 +24,20 @@
 #include <linux/types.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
+#include <linux/i2c.h>
 #include <linux/gpio.h>
+#include <linux/lf3000/gpio.h>
+#include <linux/mtd/nand.h>
+#include <linux/dma-mapping.h>
 #include <linux/amba/pl022.h>
 
 /* nexell soc headers */
 #include <mach/platform.h>
 #include <mach/devices.h>
 #include <mach/soc.h>
+#include <mach/lfp100.h>
+#include <mach/tc7734.h>
+#include <mach/bq24250-charger.h>
 
 extern void lf2000_set_scratch_reboot(void);
 
@@ -1652,6 +1659,209 @@ int nxp_hsic_phy_pwr_on(struct platform_device *pdev, bool on)
 EXPORT_SYMBOL(nxp_hsic_phy_pwr_on);
 
 /*------------------------------------------------------------------------------
+ * GPIO Button driver
+ */
+#if defined(CONFIG_KEYBOARD_GPIO)
+extern struct platform_device lf3000_gpio_buttons;
+#endif
+
+/*------------------------------------------------------------------------------
+ * ASoC (LFP100) platform device
+ */
+#if defined(CONFIG_SOC_LFP100)
+static struct platform_device lfp100_plat_device = {
+	.name	= "lfp100-chip",
+	.id		= -1,
+};
+#endif
+
+#if defined(CONFIG_TC7734_PMIC)
+static struct platform_device tc7734_plat_device = {
+        .name   = "tc7734-chip",
+        .id             = -1,
+};
+#endif
+
+#if defined(CONFIG_SND_CODEC_LFP100) || defined(CONFIG_SND_CODEC_LFP100_MODULE)
+
+static struct i2c_board_info lfp100_i2c_codec_bdi = {
+	.type	= "lfp100",
+	.addr	= LFP100_ADDR,
+};
+
+/* DAI */
+struct nxp_snd_dai_plat_data lfp100_i2s_dai_data = {
+	.i2s_ch		= 0,
+	.sample_rate	= 32000,
+};
+
+static struct platform_device lfp100_asoc_device = {
+	.name	= "lfp100-asoc",
+	.id		= -1,
+	.dev	= {
+		.platform_data	= &lfp100_i2s_dai_data,
+	}
+};
+#endif
+
+#if defined(CONFIG_SND_CODEC_TC94B26) || defined(CONFIG_SND_CODEC_TC94B26_MODULE)
+
+#define TC94B26_ADDR	0x1A
+
+static struct i2c_board_info tc94b26_i2c_codec_bdi = {
+	.type	= "tc94b26",
+	.addr	= TC94B26_ADDR,
+};
+
+/* DAI */
+struct nxp_snd_dai_plat_data tc94b26_i2s_dai_data = {
+	.i2s_ch		= 0,
+	.sample_rate	= 32000,
+};
+
+static struct platform_device tc94b26_asoc_device = {
+	.name	= "nxp-tc94b26-asoc",
+	.id		= -1,
+	.dev	= {
+		.platform_data	= &tc94b26_i2s_dai_data,
+	}
+};
+#endif
+
+#if defined(CONFIG_SENSORS_LF3000)
+static struct platform_device power_plat_device = {
+	.name	= "lf2000-power",
+	.id		= -1,
+};
+#endif
+
+#if defined(CONFIG_SENSORS_GLASGOW)
+static struct platform_device glasgow_power_plat_device = {
+	.name	= "glasgow-power",
+	.id		= -1,
+};
+#endif
+
+#if defined(CONFIG_BACKLIGHT_LF3000)
+static struct platform_device backlight_plat_device = {
+	.name	= "lf2000-bl",
+	.id		= -1,
+};
+#endif
+
+
+#if defined(CONFIG_MTD_NAND)
+static struct platform_nand_data lf2000_platform_nand_data = {
+	/* first the struct platform_nand_chip */
+	{
+		.nr_chips = 1
+	},
+	/* then the platform_nand_ctrl */
+	{
+		.priv = NULL
+	}
+};
+static struct resource lf2000_nand_resource = {
+	.start			= 0x2C000000,
+	.end			= 0x2C000018,
+	.flags			= IORESOURCE_MEM,
+};
+static struct platform_device lf2000_nand_plat_device = {
+	.name		= DEV_NAME_NAND, /*"lf2000-nand", */
+	.id		= -1,
+	.num_resources	= 1,
+	.resource	= &lf2000_nand_resource,
+	.dev =  {
+		.platform_data = &lf2000_platform_nand_data,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+		.dma_mask = &lf2000_nand_plat_device.dev.coherent_dma_mask,
+		}
+};
+#endif
+
+/*------------------------------------------------------------------------------
+ * Performance Monitoring Unit platform device
+ */
+#if defined(CONFIG_HW_PERF_EVENTS)
+static struct resource lf3000_pmu_resources[] = {
+	{
+		.start	= IRQ_GIC_PMUIRQ0,
+		.end	= IRQ_GIC_PMUIRQ0,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_GIC_PMUIRQ1,
+		.end	= IRQ_GIC_PMUIRQ1,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_GIC_PMUIRQ2,
+		.end	= IRQ_GIC_PMUIRQ2,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_GIC_PMUIRQ3,
+		.end	= IRQ_GIC_PMUIRQ3,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device lf3000_pmu_device = {
+		.name		= "arm-pmu",
+		.id			= ARM_PMU_DEVICE_CPU,
+		.resource	= lf3000_pmu_resources,
+		.num_resources	= ARRAY_SIZE(lf3000_pmu_resources),
+};
+#endif
+
+/*------------------------------------------------------------------------------
+ * Acclerometer platform device
+ */
+#if defined(CONFIG_INPUT_LF2000_ACLMTR)
+static struct platform_device aclmtr_plat_device = {
+	.name	= "lf2000-aclmtr",
+	.id		= -1,
+};
+#endif
+
+extern int lfp100_dump_registers(void);
+
+/* define routine only if using supported PMIC */
+#if defined(CONFIG_SOC_LFP100) || defined(CONFIG_TC7734_PMIC)
+void lf3000_poweroff(void)
+{
+
+#if defined(CONFIG_POWER_DOWN_OFF)
+	printk(KERN_ALERT "Power Down Off.\n");
+
+#if defined(CONFIG_SOC_LFP100)
+		lfp100_set_power_off();
+#elif defined (CONFIG_TC7734_PMIC)
+		tc7734_set_power_off();
+#else
+#error Shutdown not defined
+#endif
+
+#elif defined(CONFIG_POWER_DOWN_STANDBY)
+		printk(KERN_ALERT "Power Down Standby.\n");
+
+#if defined(CONFIG_SOC_LFP100)
+		lfp100_set_power_standby();
+#elif defined (CONFIG_TC7734_PMIC)
+		tc7734_set_power_standby();
+#else
+#error Shutdown not defined
+#endif
+
+#else
+#error Expected a CONFIG_POWER_DOWN_xxx configuration
+#endif
+
+}
+EXPORT_SYMBOL(lf3000_poweroff);
+#endif
+
+/*------------------------------------------------------------------------------
  * register board platform devices
  */
 void __init nxp_board_devices_register(void)
@@ -1678,6 +1888,8 @@ void __init nxp_board_devices_register(void)
 	#endif
 #endif
 
+	nxp_fb_device_register();
+
 #if defined(CONFIG_DM9000) || defined(CONFIG_DM9000_MODULE)
 	printk("plat: add device dm9000 net\n");
 	platform_device_register(&dm9000_plat_device);
@@ -1687,6 +1899,11 @@ void __init nxp_board_devices_register(void)
 	printk("plat: add device spdif playback\n");
 	platform_device_register(&spdif_transciever);
 	platform_device_register(&spdif_trans_dai);
+#endif
+
+#if defined(CONFIG_HW_PERF_EVENTS)
+	printk("plat: add device arm-pmu\n");
+	platform_device_register(&lf3000_pmu_device);
 #endif
 
 #if defined(CONFIG_SND_SPDIF_RECEIVER) || defined(CONFIG_SND_SPDIF_RECEIVER_MODULE)
@@ -1715,10 +1932,114 @@ void __init nxp_board_devices_register(void)
 	platform_device_register(&key_plat_device);
 #endif
 
+#if defined(CONFIG_INPUT_LF2000_ACLMTR) || defined(CONFIG_INPUT_LF2000_ACLMTR_MODULE)
+	printk("plat: add device aclmtr\n");
+	platform_device_register(&aclmtr_plat_device);
+#endif
+
+#if defined(CONFIG_SOC_LFP100)
+	printk("plat: register lfp100 chip\n");
+	platform_device_register(&lfp100_plat_device);
+#endif
+
+#if defined(CONFIG_TC7734_PMIC)
+	printk("plat: register tc7734 chip\n");
+	platform_device_register(&tc7734_plat_device);
+#endif
+
+#if defined(CONFIG_SND_CODEC_LFP100) || defined(CONFIG_SND_CODEC_LFP100_MODULE)
+	printk("plat: register asoc-lfp100\n");
+	i2c_register_board_info(LFP100_I2C_ADAPTER_0, &lfp100_i2c_codec_bdi, 1);
+	platform_device_register(&lfp100_asoc_device);
+#endif
+
+#if defined(CONFIG_SND_CODEC_TC94B26) || defined(CONFIG_SND_CODEC_TC94B26_MODULE)
+#define TC94B26_I2C_ADAPTER_0	0
+#define TC94B26_I2C_ADAPTER_1	1
+
+	printk("plat: register asoc-tc94b26\n");
+	if (is_board_lucy())
+		i2c_register_board_info(TC94B26_I2C_ADAPTER_1, &tc94b26_i2c_codec_bdi, 1);
+	else
+		i2c_register_board_info(TC94B26_I2C_ADAPTER_0, &tc94b26_i2c_codec_bdi, 1);
+	platform_device_register(&tc94b26_asoc_device);
+#endif
+
+#if defined(CONFIG_SENSORS_LF3000)
+	printk("plat: register power monitor\n");
+	platform_device_register(&power_plat_device);
+#endif
+
+#if defined(CONFIG_SENSORS_GLASGOW)
+	printk("plat: register Glasgow power monitor\n");
+	platform_device_register(&glasgow_power_plat_device);
+#endif
+
+#if defined(CONFIG_BACKLIGHT_LF3000)
+	printk("plat: register backlight\n");
+	platform_device_register(&backlight_plat_device);
+#endif
+
+#if defined(CONFIG_BACKLIGHT_PWM)
+	printk("plat: add backlight pwm device\n");
+	platform_device_register(&bl_plat_device);
+#endif
+
 #if defined(CONFIG_TOUCHSCREEN_FT5X0X)
 	printk("plat: add touch(ftx0x) device\n");
 	i2c_register_board_info(FT5X0X_I2C_BUS, &ft5x0x_i2c_bdi, 1);
 #endif
+
+#if defined(CONFIG_TOUCHSCREEN_ICN83xx_IIC) || defined (CONFIG_TOUCHSCREEN_ICN83xx_IIC_MODULE)
+	printk("plat: add touch(ICN83XX_IIC) device\n");
+	i2c_register_board_info(ICN83XX_I2C_BUS, icn83xx_i2c_info, ARRAY_SIZE(icn83xx_i2c_info));
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_ICN85xx_IIC) || defined (CONFIG_TOUCHSCREEN_ICN85xx_IIC_MODULE)
+	printk("plat: add touch(ICN85XX_IIC) device\n");
+	i2c_register_board_info(ICN85XX_I2C_BUS, icn85xx_i2c_info, ARRAY_SIZE(icn85xx_i2c_info));
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_PAP11XX) || defined(CONFIG_TOUCHSCREEN_PAP11XX_MODULE)
+	printk("plat: add touch(pap11xx) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &pap11xx_i2c_bdi, 1);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_ELAN_KTF2K) || defined(CONFIG_TOUCHSCREEN_ELAN_KTF2K_MODULE)
+	printk("plat: add touch(ELAN etkf2k) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &elan_i2c_devices[0], 1);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_ELAN_KTF2K_7INCH) || defined(CONFIG_TOUCHSCREEN_ELAN_KTF2K_7INCH_MODULE)
+	printk("plat: add touch(ELAN etkf2k7) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &elan_i2c_devices7[0], 1);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_BCD_AP386X) || defined(CONFIG_TOUCHSCREEN_BCD_AP386X_MODULE)
+	printk("plat: add touch(BCD tu_drv) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &bcd_i2c_device, 1);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_MStar_MSG21xxA) || defined(CONFIG_TOUCHSCREEN_MStar_MSG21xxA_MODULE)
+	printk("plat: add touch(MStar) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &mstar_i2c_device, 1);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_Ilitek_2839) || defined(CONFIG_TOUCHSCREEN_Ilitek_2839_MODULE)
+	printk("plat: add touch(Ilitek) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &ilitek_i2c_device, 1);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_Ilitek_2839_7INCH) || defined(CONFIG_TOUCHSCREEN_Ilitek_2839_7INCH_MODULE)
+	printk("plat: add touch(Ilitek7) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &ilitek7_i2c_device, 1);
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_Goodix_GT967_7INCH) || defined(CONFIG_TOUCHSCREEN_Goodix_GT967_7INCH_MODULE)
+	printk("plat: add touch(Goodix) device\n");
+	i2c_register_board_info(CTP_I2C_BUS, &GT967_i2c_device, 1);
+#endif
+
 
 #if defined(CONFIG_LEDS_GPIO)
 	printk("plat: add heatbeat device\n");
@@ -1735,6 +2056,7 @@ void __init nxp_board_devices_register(void)
 	printk("plat: add device nxe1100 pmic\n");
 	i2c_register_board_info(NXE1100_I2C_BUS, nxe1100_i2c_pmic_devs, ARRAY_SIZE(nxe1100_i2c_pmic_devs));
 #endif
+
 #if defined(CONFIG_V4L2_NEXELL) || defined(CONFIG_V4L2_NEXELL_MODULE)
     printk("plat: add device nxp-v4l2\n");
     platform_device_register(&nxp_v4l2_dev);
@@ -1744,6 +2066,30 @@ void __init nxp_board_devices_register(void)
     spi_register_board_info(spi_plat_board, ARRAY_SIZE(spi_plat_board));
     printk("plat: register spidev\n");
 #endif
+
+#if defined(CONFIG_V4L2_LF2000) || defined(CONFIG_V4L2_LF2000_MODULE)
+    printk("plat: add device lf2k_camera\n");
+    platform_device_register(&lf2k_camera[0]);
+    platform_device_register(&lf2k_camera[1]);
+    platform_device_register(&vip_plat_device);
+#endif
+
+#if defined(CONFIG_KEYBOARD_GPIO)
+	printk("plat: add device gpio_keyboard\n");
+	platform_device_register(&lf3000_gpio_buttons);
+#endif
+
+#if defined(CONFIG_MTD_NAND)
+	printk("plat: add device lf2000-nand\n");
+	platform_device_register(&lf2000_nand_plat_device);
+#endif
+
+#ifdef CONFIG_BQ24250_CHARGER
+
+     	printk("\nplat: register bq24250 chip\n");
+      	i2c_register_board_info(BQ24250_I2C_BUS, &bq24250_i2c_device, 1);
+#endif
+
 	/* END */
 	printk("\n");
 }
