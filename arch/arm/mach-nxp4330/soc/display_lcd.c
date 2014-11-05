@@ -35,20 +35,6 @@
 #endif
 #define ERROUT(msg...)		{ printk(KERN_ERR msg); }
 
-#define	REG_BASE()			NX_LCDINTERFACE_GetBaseAddress(0)
-
-#if defined(CONFIG_NXP4330_LEAPFROG)
-#include "spi_lcd.c"
-#endif
-
-void lcd_flip(int module, int flip)
-{
-#if defined(CONFIG_NXP4330_LEAPFROG)
-	spi_lcd_flip(module, flip);
-#endif
-}
-EXPORT_SYMBOL(lcd_flip);
-
 static int lcd_set_vsync(struct disp_process_dev *pdev, struct disp_vsync_info *psync)
 {
 	RET_ASSERT_VAL(pdev && psync, -EINVAL);

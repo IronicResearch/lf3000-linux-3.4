@@ -58,7 +58,7 @@ extern struct ion_device *get_global_ion_device(void);
 #include <linux/lf1000/lf1000fb.h>
 #endif
 
-#if (0)
+#if (1)
 #define DBGOUT(msg...)		{ printk(KERN_INFO "fb: " msg); }
 #define	DUMP_VAR_SCREENINFO
 #else

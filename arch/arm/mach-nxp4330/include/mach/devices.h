@@ -91,7 +91,7 @@ struct nxp_fb_plat_data {
     long            lcd_with_mm;    /* with (mm), default 0 */
     long            lcd_height_mm;  /* height (mm), default 0 */
     int             skip_pan_vsync;
-	struct 	disp_vsync_info	*vsync;	/* FIXME: sesters, added so nxp-fb-lfext.c will compile */
+//	struct 	disp_vsync_info	*vsync;	/* FIXME: sesters, added so nxp-fb-lfext.c will compile */
 };
 
 struct nxp_lcd_plat_data {

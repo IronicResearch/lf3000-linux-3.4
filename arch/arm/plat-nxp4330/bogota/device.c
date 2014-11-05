@@ -212,6 +212,7 @@ static struct platform_device bl_plat_device = {
 /*------------------------------------------------------------------------------
  * NAND device
  */
+#if 0	// FIXME: sesters, added in Linux 3.4.39
 #if defined(CONFIG_MTD_NAND_NEXELL)
 #include <linux/mtd/partitions.h>
 #include <asm-generic/sizes.h>
@@ -253,6 +254,37 @@ static struct platform_device nand_plat_device = {
 	},
 };
 #endif	/* CONFIG_MTD_NAND_NEXELL */
+#endif
+
+// sesters: from Linux 3.4.24 kernel
+#if defined(CONFIG_MTD_NAND)
+static struct platform_nand_data lf2000_platform_nand_data = {
+	/* first the struct platform_nand_chip */
+	{
+		.nr_chips = 1
+	},
+	/* then the platform_nand_ctrl */
+	{
+		.priv = NULL
+	}
+};
+static struct resource lf2000_nand_resource = {
+	.start			= 0x2C000000,
+	.end			= 0x2C000018,
+	.flags			= IORESOURCE_MEM,
+};
+static struct platform_device lf2000_nand_plat_device = {
+	.name		= DEV_NAME_NAND, /*"lf2000-nand", */
+	.id		= -1,
+	.num_resources	= 1,
+	.resource	= &lf2000_nand_resource,
+	.dev =  {
+		.platform_data = &lf2000_platform_nand_data,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+		.dma_mask = &lf2000_nand_plat_device.dev.coherent_dma_mask,
+		}
+};
+#endif
 
 /*------------------------------------------------------------------------------
  * Touch platform device
@@ -1750,35 +1782,6 @@ static struct platform_device backlight_plat_device = {
 #endif
 
 
-#if defined(CONFIG_MTD_NAND)
-static struct platform_nand_data lf2000_platform_nand_data = {
-	/* first the struct platform_nand_chip */
-	{
-		.nr_chips = 1
-	},
-	/* then the platform_nand_ctrl */
-	{
-		.priv = NULL
-	}
-};
-static struct resource lf2000_nand_resource = {
-	.start			= 0x2C000000,
-	.end			= 0x2C000018,
-	.flags			= IORESOURCE_MEM,
-};
-static struct platform_device lf2000_nand_plat_device = {
-	.name		= DEV_NAME_NAND, /*"lf2000-nand", */
-	.id		= -1,
-	.num_resources	= 1,
-	.resource	= &lf2000_nand_resource,
-	.dev =  {
-		.platform_data = &lf2000_platform_nand_data,
-		.coherent_dma_mask = DMA_BIT_MASK(32),
-		.dma_mask = &lf2000_nand_plat_device.dev.coherent_dma_mask,
-		}
-};
-#endif
-
 /*------------------------------------------------------------------------------
  * Performance Monitoring Unit platform device
  */
@@ -1888,8 +1891,6 @@ void __init nxp_board_devices_register(void)
 	#endif
 #endif
 
-	nxp_fb_device_register();
-
 #if defined(CONFIG_DM9000) || defined(CONFIG_DM9000_MODULE)
 	printk("plat: add device dm9000 net\n");
 	platform_device_register(&dm9000_plat_device);
@@ -1923,8 +1924,10 @@ void __init nxp_board_devices_register(void)
 	platform_device_register(&bl_plat_device);
 #endif
 
+#if 0	// FIXME: sesters, added in Linux 3.4.39
 #if defined(CONFIG_MTD_NAND_NEXELL)
 	platform_device_register(&nand_plat_device);
+#endif
 #endif
 
 #if defined(CONFIG_KEYBOARD_NEXELL_KEY) || defined(CONFIG_KEYBOARD_NEXELL_KEY_MODULE)

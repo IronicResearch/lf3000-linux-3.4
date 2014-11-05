@@ -16,18 +16,12 @@ comment "Board features"
 
 choice
 	prompt "Platform board"
-	default PLAT_NXP4330_BOGOTA
+	default NXP4330_LEAPFROG
 
 	config PLAT_NXP4330_BLACKBOX
 		bool "BLACKBOX: blackbox board"
 		help
 			Support for the blackbox board.
-
-	config PLAT_NXP4330_BOGOTA
-		bool "BOGOTA: Leapfrog Bogota tablet"
-		select NXP4330_LEAPFROG
-		help
-			Support for LeapFrog Bogota tablet
 
 	config PLAT_NXP4330_DRONE
 		bool "DRONE: Android drone board"
@@ -83,6 +77,24 @@ choice
 		bool "W7: Android w7 board"
 		help
 			Support for the android w7 tablet board.
+
+	config NXP4330_LEAPFROG
+		bool "LEAPFROG: LeapFrog boards"
+		help
+			Support for LeapFrog boards
+
+if (NXP4330_LEAPFROG)
+choice
+	prompt "LeapFrog Boards"
+	default PLAT_NXP4330_BOGOTA
+
+	config PLAT_NXP4330_BOGOTA
+		bool "BOGOTA: Leapfrog Bogota tablet"
+		depends on NXP4330_LEAPFROG
+		help
+			Support for LeapFrog Bogota tablet
+endchoice
+endif
 
 endchoice
 
