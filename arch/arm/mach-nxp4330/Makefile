@@ -17,7 +17,6 @@ obj-$(CONFIG_CMA)					+= cma_reserve_mem.o
 obj-$(CONFIG_ANDROID_RAM_CONSOLE)	+= ram_con_dev.o
 obj-y								+= nxp-dfs-bclk.o
 
-obj-$(CONFIG_NXP4330_LEAPFROG)		+= board_sysfs.o
 obj-$(CONFIG_KEYBOARD_GPIO)			+=  keyboard.o
 obj-$(CONFIG_GPIO_LEAPFROG)			+= gpio/
 obj-$(CONFIG_SOC_LFP100)		+= lfp100.o
