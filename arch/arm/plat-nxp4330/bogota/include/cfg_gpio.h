@@ -184,20 +184,20 @@
 /*------------------------------------------------------------------------------
  *	GPIO I2C
  */
-#define	CFG_IO_I2C0_SCL		((PAD_GPIO_D + 2) | PAD_FUNC_ALT0)		/* GPIO */
-#define	CFG_IO_I2C0_SDA		((PAD_GPIO_D + 3) | PAD_FUNC_ALT0)		/* GPIO */
-#define	CFG_IO_I2C1_SCL		((PAD_GPIO_D + 4) | PAD_FUNC_ALT0)		/* GPIO */
-#define	CFG_IO_I2C1_SDA		((PAD_GPIO_D + 5) | PAD_FUNC_ALT0)		/* GPIO */
-#define	CFG_IO_I2C2_SCL		((PAD_GPIO_D + 6) | PAD_FUNC_ALT0)		/* GPIO */
-#define	CFG_IO_I2C2_SDA		((PAD_GPIO_D + 7) | PAD_FUNC_ALT0)		/* GPIO */
+#define	CFG_IO_I2C0_SCL		I2C_SCL0		/* GPIO */
+#define	CFG_IO_I2C0_SDA		I2C_SDA0		/* GPIO */
+#define	CFG_IO_I2C1_SCL		I2C_SCL1		/* GPIO */
+#define	CFG_IO_I2C1_SDA		I2C_SDA1		/* GPIO */
+#define	CFG_IO_I2C2_SCL		I2C_SCL2		/* GPIO */
+#define	CFG_IO_I2C2_SDA		I2C_SDA2		/* GPIO */
 
 /*------------------------------------------------------------------------------
  *	GPIO SPI
  */
-#define CFG_PIO_SPI0_FRAME			(PAD_GPIO_C + 30)
-#define CFG_PIO_SPI0_CLOCK			(PAD_GPIO_C + 29)
-#define CFG_PIO_SPI0_RX				(PAD_GPIO_D + 0)
-#define CFG_PIO_SPI0_TX				(PAD_GPIO_C + 31)
+#define CFG_PIO_SPI0_FRAME			SPI0_FRAME
+#define CFG_PIO_SPI0_CLOCK			SPI0_CLOCK
+#define CFG_PIO_SPI0_RX				SPI0_RX
+#define CFG_PIO_SPI0_TX				SPI0_TX
 
 /*------------------------------------------------------------------------------
  *      Specific Board Defines

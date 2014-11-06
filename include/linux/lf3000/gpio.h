@@ -109,7 +109,13 @@ enum gpio_resource {
 	BT_LINK             = 93,
 	CHG_INT				= 94,
 	TC7734_INT			= 95,
-	GPIO_NUMBER_VALUES		= 96,
+	I2C_SCL2			= 96,
+	I2C_SDA2			= 97,
+	SPI0_CLOCK			= 98,
+	SPI0_FRAME			= 99,
+	SPI0_TX				= 100,
+	SPI0_RX				= 101,
+	GPIO_NUMBER_VALUES		= 102,
 };
 
 //Physical Specifier Helpers

@@ -150,20 +150,26 @@ static void init_bogota(void)
 	/* N/C        - pin C26 */
 	/* N/C        - pin C27 */
 	/* MCU_nSCS1  - pin C28 */
-	/* SSPCLK0_R  - pin C29 */
-	/* SSPFRM0    - pin C30 */
-	/* SSPTXD0    - pin C31 */
+	gpio_map[SPI0_CLOCK]	= LF3000_GPIO_PORT_C | 29;
+	gpio_map[SPI0_FRAME]	= LF3000_GPIO_PORT_C | 30;
+	gpio_map[SPI0_TX]		= LF3000_GPIO_PORT_C | 31;
+;;;
+#define CFG_PIO_SPI0_FRAME			(PAD_GPIO_C + 30)
+#define CFG_PIO_SPI0_CLOCK			(PAD_GPIO_C + 29)
+#define CFG_PIO_SPI0_RX				(PAD_GPIO_D + 0)
+#define CFG_PIO_SPI0_TX				(PAD_GPIO_C + 31)
+;;;
 
 	/* GPIO Port D */
 
-	/* SSPRXD0    - pin  D0 */
+	gpio_map[SPI0_RX]		= LF3000_GPIO_PORT_D | 0;
 	/* MCU_PWM0   - pin  D1 */
 	gpio_map[I2C_SCL0]		= LF3000_GPIO_PORT_D | 2;
 	gpio_map[I2C_SDA0]		= LF3000_GPIO_PORT_D | 3;
 	gpio_map[I2C_SCL1]		= LF3000_GPIO_PORT_D | 4;
 	gpio_map[I2C_SDA1]		= LF3000_GPIO_PORT_D | 5;
-	/* SCL2       - pin  D6 */
-	/* SDA2       - pin  D7 */
+	gpio_map[I2C_SCL2]		= LF3000_GPIO_PORT_D | 6;
+	gpio_map[I2C_SDA2]		= LF3000_GPIO_PORT_D | 7;
 
 	/* N/C          - pin  D8 */
 	/* I2SDOUT_OUT  - pin  D9 */
@@ -1158,7 +1164,7 @@ extern unsigned lf3000_gpio_l2p( struct gpio_chip* chip, unsigned offset )
 		lf3000_gpio_init_map();
 
 	/* ensure index is in range */
-	if (offset < sizeof(gpio_map)) {
+	if (offset < ARRAY_SIZE(gpio_map)) {
 		return gpio_map[offset];
 	} else {
 		printk(KERN_WARNING "%s.%s:%d offset (%d) out of range\n",
