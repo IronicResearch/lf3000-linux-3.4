@@ -12,6 +12,7 @@ enum lf2000_leapfrog_platform
 	LIMA,
 	GLASGOW,
 	XANADU,
+	BOGOTA,
 };
 
 bool is_board_lucy(void);
