@@ -153,12 +153,6 @@ static void init_bogota(void)
 	gpio_map[SPI0_CLOCK]	= LF3000_GPIO_PORT_C | 29;
 	gpio_map[SPI0_FRAME]	= LF3000_GPIO_PORT_C | 30;
 	gpio_map[SPI0_TX]		= LF3000_GPIO_PORT_C | 31;
-;;;
-#define CFG_PIO_SPI0_FRAME			(PAD_GPIO_C + 30)
-#define CFG_PIO_SPI0_CLOCK			(PAD_GPIO_C + 29)
-#define CFG_PIO_SPI0_RX				(PAD_GPIO_D + 0)
-#define CFG_PIO_SPI0_TX				(PAD_GPIO_C + 31)
-;;;
 
 	/* GPIO Port D */
 
