@@ -32,7 +32,7 @@ enum gpio_resource {
 	DOCK_POWER			= 26,
 	BATTERY_PACK			= 27,
 	SD1_POWER			= 28,
-	LFP100_INT			= 29,
+	LFP100_INT			= 29, // Use this for TI PMIC interrupt
 	REAR_CAM_ENABLE_L		= 30,
 	ACCEL_INT			= 31,
 	REAR_CAM_RESET_L		= 32,
@@ -92,10 +92,16 @@ enum gpio_resource {
 	MAGNETO_INT			= 80,
 	TP_DEBUG_NEONODE 		= 81,
 	NAND_CHIP_SELECT 		= 82,
-
+	
+#if defined(CONFIG_PLAT_NXP4330_BOGOTA)
+	AUDIO_INT			= 83,
+	AUDIO_MUTE			= 84,
+	AUDIO_RST_L			= 85,
+#else
 	NEONODE_BSL_RX			= 83,
 	NEONODE_BSL_TX			= 84,
 	NEONODE_TEST		= 85,
+#endif
 	NEONODE_RST			= 86,
 	
 	CHG_FLT = 87,
@@ -107,15 +113,17 @@ enum gpio_resource {
 	SYNC_BUTTON			= 91,
 	BT_RESET_L          = 92,
 	BT_LINK             = 93,
-	CHG_INT				= 94,
-	TC7734_INT			= 95,
+	CHG_INT				= 94, // Use this for charger chip interrupt, if there is a separate charger
+	TC7734_INT			= 95, // Use this for Toshiba PMIC interrupt
 	I2C_SCL2			= 96,
 	I2C_SDA2			= 97,
 	SPI0_CLOCK			= 98,
 	SPI0_FRAME			= 99,
 	SPI0_TX				= 100,
 	SPI0_RX				= 101,
-	GPIO_NUMBER_VALUES		= 102,
+	I2S_SEL_BT			= 102,
+	VOUT_DE_R			= 103,
+	GPIO_NUMBER_VALUES		= 104,
 };
 
 //Physical Specifier Helpers
