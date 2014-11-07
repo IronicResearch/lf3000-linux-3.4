@@ -1380,6 +1380,12 @@ void __init nxp_cpu_devices_register(void)
 {
 	int i = 0;
 	printk("[Register machine platform devices]\n");
+
+#if defined(CONFIG_GPIO_LEAPFROG)
+	printk("initialize gpio chips\n");
+	lf3000_gpio_init();
+#endif
+
 #if defined(CONFIG_ARM_AMBA)
 	for (i = 0; i < ARRAY_SIZE(amba_devices); i++) {
 	struct amba_device *d = amba_devices[i];
