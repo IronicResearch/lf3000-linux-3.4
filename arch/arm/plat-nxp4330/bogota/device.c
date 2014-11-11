@@ -631,7 +631,7 @@ static struct spi_board_info spi_plat_board[] __initdata = {
         .bus_num         = 0,           /* Note> set bus num, must be smaller than ARRAY_SIZE(spi_plat_device) */
         .chip_select     = 0,           /* Note> set chip select num, must be smaller than spi cs_num */
         .controller_data = &spi0_info,
-        .mode            = SPI_MODE_3 | SPI_CPOL | SPI_CPHA,
+        .mode            = SPI_MODE_0,
     },
 };
 
@@ -1602,6 +1602,7 @@ void __init nxp_reserve_mem(void)
     nxp_cma_region_reserve(regions, map);
 }
 #endif
+
 /*------------------------------------------------------------------------------
  * DW MMC board config
  */
@@ -1626,6 +1627,7 @@ static int _dwmci_get_ro(u32 slot_id)
 #ifdef CONFIG_MMC_NEXELL_CH0
 static int _dwmci0_init(u32 slot_id, irq_handler_t handler, void *data)
 {
+#ifdef CONFIG_PLAT_NXP4330_VTK
 	struct dw_mci *host = (struct dw_mci *)data;
 	int io  = CFG_SDMMC0_DETECT_IO;
 	int irq = IRQ_GPIO_START + io;
@@ -1637,45 +1639,167 @@ static int _dwmci0_init(u32 slot_id, irq_handler_t handler, void *data)
 				DEV_NAME_SDHC "0", (void*)host->slot[slot_id]);
 	if (0 > ret)
 		pr_err("dw_mmc dw_mmc.%d: fail request interrupt %d ...\n", id, irq);
+#endif	/* CONFIG_PLAT_NXP4330_VTK */
 	return 0;
 }
 
 static int _dwmci0_get_cd(u32 slot_id)
 {
+#ifdef CONFIG_PLAT_NXP4330_VTK
 	int io = CFG_SDMMC0_DETECT_IO;
 	int ret = nxp_soc_gpio_get_in_value(io);
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 static struct dw_mci_board _dwmci0_data = {
-	.quirks			= DW_MCI_QUIRK_HIGHSPEED,
-	.bus_hz			= 40 * 1000 * 1000,
-	.caps			= MMC_CAP_CMD23,
+	.quirks		= DW_MCI_QUIRK_HIGHSPEED,
+	.bus_hz		= 100 * 1000 * 1000,
+	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA | MMC_CAP_NONREMOVABLE,
 	.detect_delay_ms= 200,
-	.clk_dly        = DW_MMC_DRIVE_DELAY(0) | DW_MMC_SAMPLE_DELAY(0) | DW_MMC_DRIVE_PHASE(2) | DW_MMC_SAMPLE_PHASE(2),
-	.cd_type		= DW_MCI_CD_EXTERNAL,
-	.init			= _dwmci0_init,
-	.get_ro			= _dwmci_get_ro,
-	.get_cd			= _dwmci0_get_cd,
+//	.sdr_timing	= 0x03020001,
+//	.ddr_timing	= 0x03030002,
+	.cd_type	= DW_MCI_CD_EXTERNAL,
+	.init		= _dwmci0_init,
+	.get_ro		= _dwmci_get_ro,
+	.get_cd		= _dwmci0_get_cd,
 	.ext_cd_init	= _dwmci_ext_cd_init,
 	.ext_cd_cleanup	= _dwmci_ext_cd_cleanup,
 };
 #endif
 
 #ifdef CONFIG_MMC_NEXELL_CH1
+int glasgow_cdetect_enabled = 1;
+static int __init get_cmdline_cdetect(char *str)
+{
+  int val;
+
+  if ( get_option(&str, &val) ) {
+    glasgow_cdetect_enabled = val;
+    return 0;
+  }
+
+  return -EINVAL;
+}
+early_param("cdetect", get_cmdline_cdetect);
+
+static int _dwmci1_init(u32 slot_id, irq_handler_t handler, void *data)
+{
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+	struct dw_mci *host = (struct dw_mci *)data;
+	int io  = CFG_SDMMC0_DETECT_IO;
+	int irq = IRQ_GPIO_START + io;
+	int id  = 1, ret = 0;
+
+	/*
+	 * Check Kernel cmdline option "cdetect" [ see get_cmdline_cdetect() ]
+	 *  if option = 0, then card detect disabled -- in SD boot mode
+	 *  if option = 1, then card detect enabled  -- in eMMC boot mode
+	 */
+	switch ( glasgow_cdetect_enabled ) {
+	  case 0:
+	    printk(KERN_WARNING "dw_mmc dw_mmc.%d: External card detect DISABLED!\n", id);
+	    break;
+
+	  case 1:
+      printk(KERN_WARNING "dw_mmc dw_mmc.%d: External card detect ENABLED!\n", id);
+	    /* fall through */
+
+	  default:
+	    printk(KERN_WARNING "dw_mmc dw_mmc.%d: Using external card detect irq %3d (io %2d)\n", id, irq, io);
+      ret  = request_irq(irq, handler, IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+            DEV_NAME_SDHC "1", (void*)host->slot[slot_id]);
+      if (0 > ret)
+        pr_err("dw_mmc dw_mmc.%d: fail request interrupt %d ...\n", id, irq);
+	}
+#endif
+	return 0;
+}
+
+static int _dwmci1_get_cd(u32 slot_id)
+{
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+	int io = CFG_SDMMC0_DETECT_IO;
+	int ret;
+
+	if ( !glasgow_cdetect_enabled )
+	  return 0;
+
+	ret = nxp_soc_gpio_get_in_value(io);
+  return !ret;
+#else
+	return 0;
+#endif
+}
+
 static struct dw_mci_board _dwmci1_data = {
-	.quirks			= DW_MCI_QUIRK_BROKEN_CARD_DETECTION |
-					  DW_MCI_QUIRK_HIGHSPEED |
-					  DW_MMC_QUIRK_HW_RESET_PW |
-					  DW_MCI_QUIRK_NO_DETECT_EBIT,
-	.bus_hz			= 80 * 1000 * 1000,
-	.caps			= MMC_CAP_UHS_DDR50 |
-						MMC_CAP_NONREMOVABLE |
-						MMC_CAP_4_BIT_DATA | MMC_CAP_CMD23 |
-						MMC_CAP_ERASE | MMC_CAP_HW_RESET,
-	.desc_sz		= 4,
+	.quirks		= DW_MCI_QUIRK_HIGHSPEED,
+	.bus_hz		= 100 * 1000 * 1000,
+	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA,
 	.detect_delay_ms= 200,
-	.clk_dly        = DW_MMC_DRIVE_DELAY(0) | DW_MMC_SAMPLE_DELAY(0) | DW_MMC_DRIVE_PHASE(1) | DW_MMC_SAMPLE_PHASE(0),
+//	.sdr_timing	= 0x03020001,
+//	.ddr_timing	= 0x03030002,
+	.cd_type	= DW_MCI_CD_EXTERNAL,
+	.init		= _dwmci1_init,
+	.get_ro		= _dwmci_get_ro,
+	.get_cd		= _dwmci1_get_cd,
+	.ext_cd_init	= _dwmci_ext_cd_init,
+	.ext_cd_cleanup	= _dwmci_ext_cd_cleanup,
+};
+#endif
+
+#ifdef CONFIG_MMC_NEXELL_CH2
+static int _dwmci2_init(u32 slot_id, irq_handler_t handler, void *data)
+{
+#ifdef CONFIG_PLAT_NXP4330_VTK
+	struct dw_mci *host = (struct dw_mci *)data;
+	int io  = CFG_SDMMC0_DETECT_IO;
+	int irq = IRQ_GPIO_START + io;
+	int id  = 0, ret = 0;
+
+	printk("dw_mmc dw_mmc.%d: Using external card detect irq %3d (io %2d)\n", id, irq, io);
+
+	ret  = request_irq(irq, handler, IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				DEV_NAME_SDHC "2", (void*)host->slot[slot_id]);
+	if (0 > ret)
+		pr_err("dw_mmc dw_mmc.%d: fail request interrupt %d ...\n", id, irq);
+#endif	/* CONFIG_PLAT_NXP4330_VTK */
+	return 0;
+}
+
+static int _dwmci2_get_cd(u32 slot_id)
+{
+#ifdef CONFIG_PLAT_NXP4330_VTK
+	int io = CFG_SDMMC0_DETECT_IO;
+	int ret = nxp_soc_gpio_get_in_value(io);
+	return ret;
+#else
+	return 0;
+#endif
+}
+
+static struct dw_mci_board _dwmci2_data = {
+	.quirks		= DW_MCI_QUIRK_HIGHSPEED,
+	.bus_hz		= 100 * 1000 * 1000,
+#ifndef CONFIG_PLAT_NXP4330_VTK
+	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA 
+					| MMC_CAP_NONREMOVABLE
+			  		| MMC_CAP_POWER_OFF_CARD,
+
+#else	/* since VTK doesn't have eMMC, don't specify DDR */
+	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA,
+#endif
+	.detect_delay_ms= 200,
+//	.sdr_timing	= 0x03020001,
+//	.ddr_timing	= 0x03030002,
+	.cd_type	= DW_MCI_CD_EXTERNAL,
+	.init		= _dwmci2_init,
+	.get_ro		= _dwmci_get_ro,
+	.get_cd		= _dwmci2_get_cd,
+	.ext_cd_init	= _dwmci_ext_cd_init,
+	.ext_cd_cleanup	= _dwmci_ext_cd_cleanup,
 };
 #endif
 
@@ -1889,6 +2013,9 @@ void __init nxp_board_devices_register(void)
 	#ifdef CONFIG_MMC_NEXELL_CH1
 	nxp_mmc_add_device(1, &_dwmci1_data);
 	#endif
+	#ifdef CONFIG_MMC_NEXELL_CH2
+	nxp_mmc_add_device(2, &_dwmci2_data);
+	#endif
 #endif
 
 #if defined(CONFIG_DM9000) || defined(CONFIG_DM9000_MODULE)
@@ -1961,10 +2088,7 @@ void __init nxp_board_devices_register(void)
 #define TC94B26_I2C_ADAPTER_1	1
 
 	printk("plat: register asoc-tc94b26\n");
-	if (is_board_lucy())
-		i2c_register_board_info(TC94B26_I2C_ADAPTER_1, &tc94b26_i2c_codec_bdi, 1);
-	else
-		i2c_register_board_info(TC94B26_I2C_ADAPTER_0, &tc94b26_i2c_codec_bdi, 1);
+	i2c_register_board_info(TC94B26_I2C_ADAPTER_0, &tc94b26_i2c_codec_bdi, 1);
 	platform_device_register(&tc94b26_asoc_device);
 #endif
 

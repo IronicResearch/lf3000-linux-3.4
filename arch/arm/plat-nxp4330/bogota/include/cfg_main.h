@@ -50,8 +50,10 @@
 /*------------------------------------------------------------------------------
  * 	Extern Ethernet
  */
+#if 0
 #define CFG_ETHER_EXT_PHY_BASEADDR          	0x04000000	// DM9000: CS1
 #define	CFG_ETHER_EXT_IRQ_NUM					(IRQ_GPIO_C_START + 26)
+#endif
 
 /*------------------------------------------------------------------------------
  * 	Nand (HWECC)
@@ -64,7 +66,9 @@
 /*------------------------------------------------------------------------------
  *	Nand (GPIO)
  */
+#if !defined (CONFIG_NXP4330_LEAPFROG)	// WP GPIO support disabled in LeapFrog Bogota
 #define CFG_IO_NAND_nWP							(PAD_GPIO_C + 27)		/* GPIO */
+#endif
 
 /*------------------------------------------------------------------------------
  * 	Display (DPC and MLC)
@@ -171,7 +175,7 @@
 #define	CFG_AUDIO_I2S0_MASTER_MODE				CTRUE	// CTRUE
 #define	CFG_AUDIO_I2S0_TRANS_MODE				0		// 0:I2S, 1:Left 2:Right justified */
 #define	CFG_AUDIO_I2S0_FRAME_BIT				48		// 32, 48
-#define	CFG_AUDIO_I2S0_SAMPLE_RATE				48000
+#define	CFG_AUDIO_I2S0_SAMPLE_RATE				32000
 
 #if defined(CONFIG_SND_CODEC_TC94B26)
 #define	CFG_AUDIO_I2S0_PRE_SUPPLY_MCLK			1
@@ -224,9 +228,9 @@
 #define CFG_SPI1_COM_MODE						1 /* available 0: INTERRUPT_TRANSFER, 1: POLLING_TRANSFER, 2: DMA_TRANSFER */
 #define CFG_SPI2_COM_MODE						1 /* available 0: INTERRUPT_TRANSFER, 1: POLLING_TRANSFER, 2: DMA_TRANSFER */
 
-#define CFG_SPI0_CS_GPIO_MODE					0		/* 0 FSS CONTROL, 1: CS CONTRO GPIO MODE */
-#define CFG_SPI1_CS_GPIO_MODE					0	/* 0 FSS CONTROL, 1: CS CONTRO GPIO MODE */
-#define CFG_SPI2_CS_GPIO_MODE					0	/* 0 FSS CONTROL, 1: CS CONTRO GPIO MODE */
+#define CFG_SPI0_CS_GPIO_MODE					1	/* 0 FSS CONTROL, 1: CS CONTROL GPIO MODE */
+#define CFG_SPI1_CS_GPIO_MODE					0	/* 0 FSS CONTROL, 1: CS CONTROL GPIO MODE */
+#define CFG_SPI2_CS_GPIO_MODE					0	/* 0 FSS CONTROL, 1: CS CONTROL GPIO MODE */
 
 #define CFG_SPI0_CS								(PAD_GPIO_C + 30)	/* GPIO Enable */
 
@@ -241,7 +245,7 @@
 /*------------------------------------------------------------------------------
  * 	SDHC
  */
-#define CFG_SDMMC0_DETECT_IO          (PAD_GPIO_B + 7)  /* external cd */
+#define CFG_SDMMC0_DETECT_IO          CARTRIDGE_DETECT  /* external cd */
 
 /*------------------------------------------------------------------------------
  * 	ADC
