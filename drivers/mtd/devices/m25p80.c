@@ -693,7 +693,7 @@ static const struct spi_device_id m25p_ids[] = {
 
 	/* Macronix */
 	{ "mx25l4005a",  INFO(0xc22013, 0, 64 * 1024,   8, SECT_4K) },
-	{ "mx25l8005",   INFO(0xc22014, 0, 64 * 1024,  16, 0) },
+	{ "mx25l8005",   INFO(0xc22014, 0, 64 * 1024,  16, SECT_4K) },
 	{ "mx25l1606e",  INFO(0xc22015, 0, 64 * 1024,  32, SECT_4K) },
 	{ "mx25l3205d",  INFO(0xc22016, 0, 64 * 1024,  64, 0) },
 	{ "mx25l6405d",  INFO(0xc22017, 0, 64 * 1024, 128, 0) },
@@ -759,6 +759,7 @@ static const struct spi_device_id m25p_ids[] = {
 
 	{ "m25pe80", INFO(0x208014,  0, 64 * 1024, 16,       0) },
 	{ "m25pe16", INFO(0x208015,  0, 64 * 1024, 32, SECT_4K) },
+	{ "m25pe40", INFO(0x208013,  0, 64 * 1024,  8, SECT_4K) },
 
 	{ "m25px32",    INFO(0x207116,  0, 64 * 1024, 64, SECT_4K) },
 	{ "m25px32-s0", INFO(0x207316,  0, 64 * 1024, 64, SECT_4K) },

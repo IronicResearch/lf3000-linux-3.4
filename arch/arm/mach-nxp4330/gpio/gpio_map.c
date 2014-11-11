@@ -35,7 +35,7 @@ int gpio_map[GPIO_NUMBER_VALUES];
 
 static void init_bogota(void)
 {
-	printk(KERN_WARNING "%s: R3K GPIO mapping\n", __func__);
+	printk(KERN_WARNING "%s: Bogota GPIO mapping\n", __func__);
 
 	/* UNRESOLVED: FCAM_CLK_ENA_L, USB_CHG_DETECT */
 
@@ -238,7 +238,7 @@ static void init_bogota(void)
 	/* N/C        -  pin 5 */
 	/* N/C        -  pin 6 */
 	/* N/C        -  pin 7 */
-}	/* init_r3k() */
+}	/* init_bogota() */
 
 static void init_cabo(void)
 {
@@ -1094,6 +1094,11 @@ void lf3000_gpio_init_map(void)
 
 		case LF3000_BOARD_R3K:
 			init_r3k();
+			break;
+
+		case LF3000_BOARD_BOGOTA:
+			printk(KERN_WARNING "defaulting to BOGOTA GPIO mapping\n");
+			init_bogota();
 			break;
 			
 		case LF3000_BOARD_CABO:

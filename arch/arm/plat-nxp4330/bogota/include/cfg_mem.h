@@ -21,8 +21,10 @@
 /*------------------------------------------------------------------------------
  * 	 System memory map
  */
-#define	CFG_MEM_PHY_SYSTEM_BASE			0x40000000	/* System, must be at an evne 2MB boundary (head.S) */
-#if defined(CONFIG_PLAT_NXP4330_CABO)
+#define	CFG_MEM_PHY_SYSTEM_BASE			0x40000000	/* System, must be at an even 2MB boundary (head.S) */
+#if defined(CONFIG_PLAT_NXP4330_BOGOTA)
+#define	CFG_MEM_PHY_SYSTEM_SIZE			0x1F000000	/* 512 MB - 16 MB DMA */
+#elif defined(CONFIG_PLAT_NXP4330_CABO)
 #define	CFG_MEM_PHY_SYSTEM_SIZE			0x1F000000	/* 512 MB - 16 MB DMA */
 #elif defined(CONFIG_PLAT_NXP4330_GLASGOW)
 #define	CFG_MEM_PHY_SYSTEM_SIZE			0x3F000000	/* 1024 MB - 16 MB DMA */
