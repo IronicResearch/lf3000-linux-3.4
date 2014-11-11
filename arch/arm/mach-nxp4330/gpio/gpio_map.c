@@ -121,8 +121,11 @@ static void init_bogota(void)
 	/* N/C           - pin C1  */
 	/* N/C           - pin C2  */
 	/* MCU_HDMI_CEC  - pin C3  */
+#if defined (CONFIG_TC7734_PMIC)
+	gpio_map[TC7734_INT]		= LF3000_GPIO_PORT_C | 4;
+#elif defined (CONFIG_SOC_LFP100)
 	gpio_map[LFP100_INT]		= LF3000_GPIO_PORT_C | 4;
-	/* CIP_L         - pin C5  */
+#endif
 	gpio_map[CARTRIDGE_DETECT]	= LF3000_GPIO_PORT_C | 5;
 	gpio_map[ACCEL_INT]		= LF3000_GPIO_PORT_C | 6;
 	/* CPT_WAKE      - pin C7  */

@@ -87,20 +87,20 @@
 #define	CFG_DISP_PRI_LCD_WIDTH_MM				152.4
 #define	CFG_DISP_PRI_LCD_HEIGHT_MM				91.44
 
-#define CFG_DISP_PRI_RESOL_WIDTH          		1280	// X Resolution
-#define CFG_DISP_PRI_RESOL_HEIGHT				 800	// Y Resolution
+#define CFG_DISP_PRI_RESOL_WIDTH          		1024	// X Resolution
+#define CFG_DISP_PRI_RESOL_HEIGHT				 600	// Y Resolution
 
-#define CFG_DISP_PRI_HSYNC_SYNC_WIDTH           1
-#define CFG_DISP_PRI_HSYNC_BACK_PORCH           0
+#define CFG_DISP_PRI_HSYNC_SYNC_WIDTH           2
+#define CFG_DISP_PRI_HSYNC_BACK_PORCH           160
 #define CFG_DISP_PRI_HSYNC_FRONT_PORCH          160
 #define CFG_DISP_PRI_HSYNC_ACTIVE_HIGH          CFALSE
 #define CFG_DISP_PRI_VSYNC_SYNC_WIDTH           1
-#define CFG_DISP_PRI_VSYNC_BACK_PORCH           0
-#define CFG_DISP_PRI_VSYNC_FRONT_PORCH          23
+#define CFG_DISP_PRI_VSYNC_BACK_PORCH           63
+#define CFG_DISP_PRI_VSYNC_FRONT_PORCH          12
 #define CFG_DISP_PRI_VSYNC_ACTIVE_HIGH 	        CFALSE
 
 #define CFG_DISP_PRI_CLKGEN0_SOURCE             DPC_VCLK_SRC_PLL1
-#define CFG_DISP_PRI_CLKGEN0_DIV                12
+#define CFG_DISP_PRI_CLKGEN0_DIV                800/55
 #define CFG_DISP_PRI_CLKGEN0_DELAY              0
 #define CFG_DISP_PRI_CLKGEN0_INVERT				0
 #define CFG_DISP_PRI_CLKGEN1_SOURCE             DPC_VCLK_SRC_VCLK2
