@@ -373,6 +373,7 @@ static void nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 		writesb(chip->IO_ADDR_W, buf + (len & ~0x3), (len & 3));
 }
 
+#if !defined (CONFIG_NXP4330_LEAPFROG)
 /*
  * Enable NAND write protect
  */
@@ -388,10 +389,15 @@ static void nxp_wp_disable(void)
 {
 	nxp_soc_gpio_set_out_value(CFG_IO_NAND_nWP, 1);
 }
+#endif
 
 static void nand_dev_init(struct mtd_info *mtd)
 {
+#if !defined (CONFIG_NXP4330_LEAPFROG)
 	unsigned int io = CFG_IO_NAND_nWP;
+#else
+#warning "NAND WP line disabled in LeapFrog builds"
+#endif
 
 	NX_MCUS_SetAutoResetEnable(CTRUE);
 	NX_MCUS_ClearInterruptPending(0);
@@ -404,10 +410,12 @@ static void nand_dev_init(struct mtd_info *mtd)
 	NX_MCUS_SetNFBank(0);
 	NX_MCUS_SetNFCSEnable(CFALSE);
 
+#if !defined (CONFIG_NXP4330_LEAPFROG)
 	nxp_soc_gpio_set_out_value(io, 0);
 	nxp_soc_gpio_set_io_dir(io, 1);
 	nxp_soc_gpio_set_io_func(io, nxp_soc_gpio_get_altnum(io));
 	nxp_soc_gpio_set_out_value(io, 1);
+#endif
 }
 
 

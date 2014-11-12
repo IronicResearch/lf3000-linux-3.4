@@ -11,7 +11,7 @@
 #include <linux/amba/pl022.h>
 #include <asm/system_info.h>
 
-#include <mach/cfg_main.h>
+#include <cfg_main.h>
 
 #include <mach/irqs.h>
 #include <mach/iomap.h>

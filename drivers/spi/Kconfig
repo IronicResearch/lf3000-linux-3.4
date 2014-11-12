@@ -279,7 +279,7 @@ config SPI_PL022_PORT1
 	depends on SPI_PL022
 
 config USE_DMA_PORT1
-	bool "use dma mode port 2"
+	bool "use dma mode port 1"
 	depends on SPI_PL022
 
 config SPI_PL022_PORT2

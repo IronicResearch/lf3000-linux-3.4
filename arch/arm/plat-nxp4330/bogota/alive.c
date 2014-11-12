@@ -12,8 +12,8 @@
 
 #include <mach/nxp4330.h>
 
-#include "prototype/module/nx_alive.h"
-#include <mach/alive.h>
+#include <nx_alive.h>
+#include <alive.h>
 
 static struct NX_ALIVE_RegisterSet* regSet = NULL;
 

@@ -31,6 +31,8 @@
 #include <linux/amba/serial.h>
 #include <linux/dma-mapping.h>
 #include <linux/lf3000/gpio.h>
+#include <linux/gpio.h>
+#include <linux/delay.h>
 #include <linux/pm_runtime.h>
 
 /* nexell soc headers */
@@ -452,6 +454,31 @@ static struct platform_device *pwm_devices[] = {
 };
 #endif	/* CONFIG_HAVE_PWM */
 
+#if defined(CONFIG_ADC_NEXELL)
+/*------------------------------------------------------------------------------
+ * ADC driver to expose ADC channels
+ */
+
+static struct resource adc_resources[] = {
+        [0] = {
+                .start  = PHY_BASEADDR_ADC,
+                .end    = PHY_BASEADDR_ADC + 0x00000040,
+                .flags  = IORESOURCE_MEM,
+        },
+        [1] = {
+                .start  = IRQ_PHY_ADC,
+                .end    = IRQ_PHY_ADC,
+                .flags  = IORESOURCE_IRQ,
+        },
+};
+
+static struct platform_device adc_plat_device = {
+        .name           = DEV_NAME_ADC,
+        .id             = 0,
+        .num_resources  = ARRAY_SIZE(adc_resources),
+        .resource       = adc_resources,
+};
+#endif
 /*------------------------------------------------------------------------------
  * GPIO device
  */
@@ -855,7 +882,7 @@ static void spi_init(int ch)
 
 static struct pl022_ssp_controller ssp0_platform_data = {
     .bus_id         = 0,
-    .num_chipselect = 1,
+    .num_chipselect = 2,
 #if defined(CONFIG_USE_DMA_PORT0) && defined(CONFIG_AMBA_PL08X)
     .enable_dma     = 1,
     .dma_filter     = pl08x_filter_id,
@@ -1323,6 +1350,7 @@ void lf3000_gpio_init(void);
 
 /*------------------------------------------------------------------------------
  * ADC
+ * Note: LeapFrog uses another driver, as Nexell uses this board driver to sense temperature
  */
 #if defined(CONFIG_NXP_ADC)
 
@@ -1467,6 +1495,11 @@ void __init nxp_cpu_devices_register(void)
     platform_add_devices(gpio_devices, ARRAY_SIZE(gpio_devices));
 #endif
 
+#if defined(CONFIG_ADC_NEXELL)
+	printk("mach: add device ADC  \n");
+        platform_device_register(&adc_plat_device);
+#endif
+
 #if defined(CONFIG_SND_NEXELL_I2S) || defined(CONFIG_SND_NEXELL_I2S_MODULE)
     printk("mach: add device i2s (array:%d) \n", ARRAY_SIZE(i2s_devices));
     platform_add_devices(i2s_devices, ARRAY_SIZE(i2s_devices));
@@ -1492,7 +1525,7 @@ void __init nxp_cpu_devices_register(void)
     platform_device_register(&nxp4330_device_ohci);
 #endif
 
-#if defined(CONFIG_USB_DWCOTG)
+#if defined(CONFIG_USB_DWCOTG) || defined(CONFIG_USB_DWCOTG_MODULE)
     printk("mach: add device usb otg\n");
     platform_device_register(&otg_plat_device);
 #endif
@@ -1503,6 +1536,11 @@ void __init nxp_cpu_devices_register(void)
     platform_device_register(&nxp_device_ion);
 #endif
 
+
+#if defined(CONFIG_BCM43143)
+	gpio_request(WIFI_RESET, "Wi-Fi reset");
+#endif
+
 #if defined(CONFIG_NXP_ADC)
     printk("mach: add device adc\n");
     platform_device_register(&adc_device);
@@ -1511,6 +1549,12 @@ void __init nxp_cpu_devices_register(void)
     printk("mach: add graphic device opengl|es\n");
     platform_device_register(&vr_gpu_device);
 
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)
+	wl12xx_init();
+	//i = gpio_request_one(BT_RESET_L, GPIOF_INIT_HIGH, "Bluetooth Reset");
+	//if (!i)
+		//printk("mach: BT Reset %d %d \n", i, gpio_get_value_cansleep(BT_RESET_L));
+#endif
 #if defined(CONFIG_NXP4330_WATCHDOG)
     printk("mach: add device watchdog\n");
     platform_device_register(&nxp_device_wdt);
