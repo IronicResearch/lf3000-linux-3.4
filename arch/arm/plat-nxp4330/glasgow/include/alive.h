@@ -87,7 +87,7 @@ enum scratch_request {
 	SCRATCH_REQUEST_PLAY    = 0,  // Launch Play if possible
 	SCRATCH_REQUEST_RETURN  = 1,  // Return to Play if possible
 	SCRATCH_REQUEST_UPDATE  = 2,  // Enter recovery in update mode
-#ifdef CONFIG_PLAT_NXP4330_GLASGOW_ALPHA
+#ifdef CONFIG_PLAT_NXP4330_GLASGOW
 	SCRATCH_REQUEST_SLEEP   = 3,  // Enter sleep
 #else
 	SCRATCH_REQUEST_BATTERY = 3,  // Enter play: battery failed

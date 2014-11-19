@@ -1687,7 +1687,7 @@ early_param("cdetect", get_cmdline_cdetect);
 
 static int _dwmci1_init(u32 slot_id, irq_handler_t handler, void *data)
 {
-#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
 	struct dw_mci *host = (struct dw_mci *)data;
 	int io  = CFG_SDMMC0_DETECT_IO;
 	int irq = IRQ_GPIO_START + io;
@@ -1720,7 +1720,7 @@ static int _dwmci1_init(u32 slot_id, irq_handler_t handler, void *data)
 
 static int _dwmci1_get_cd(u32 slot_id)
 {
-#if defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
 	int io = CFG_SDMMC0_DETECT_IO;
 	int ret;
 

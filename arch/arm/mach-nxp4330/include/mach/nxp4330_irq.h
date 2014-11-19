@@ -125,7 +125,17 @@
 #define IRQ_GIC_PPI_PVT			(IRQ_GIC_START  +  29)
 #define IRQ_GIC_PPI_WDT			(IRQ_GIC_START  +  30)
 #define IRQ_GIC_PPI_VIC			(IRQ_GIC_START  +  31)
-#define IRQ_GIC_END				(IRQ_GIC_START  +  32)
+#define IRQ_GIC_PPI_END			(IRQ_GIC_START  +  32)
+
+#define IRQ_GIC_SPI_START		(IRQ_GIC_START  +  32)
+#define IRQ_GIC_PMUIRQ0			(IRQ_GIC_SPI_START  +   0)
+#define IRQ_GIC_PMUIRQ1			(IRQ_GIC_SPI_START  +   1)
+#define IRQ_GIC_PMUIRQ2			(IRQ_GIC_SPI_START  +   2)
+#define IRQ_GIC_PMUIRQ3			(IRQ_GIC_SPI_START  +   3)
+#define IRQ_GIC_L2CIRQ			(IRQ_GIC_SPI_START  +   4)
+#define IRQ_GIC_MCUIRQ			(IRQ_GIC_SPI_START  +   5)
+#define IRQ_GIC_END				(IRQ_GIC_SPI_START + 32)
+
 
 /*
  * MAX(Physical+Virtual) Interrupt Number
