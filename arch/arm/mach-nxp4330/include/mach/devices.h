@@ -25,6 +25,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/i2c-gpio.h>
+#include <asm/pmu.h>
 
 #include "clkdev.h"
 #include "display.h"
