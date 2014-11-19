@@ -108,19 +108,25 @@ enum gpio_resource {
 	BT_LINK			= 93,
 	CHG_INT			= 94, // Use this for charger chip interrupt, if there is a separate charger
 	TC7734_INT		= 95, // Use this for Toshiba PMIC interrupt
-	I2C_SCL2		= 96,
-	I2C_SDA2		= 97,
-	SPI0_CLOCK		= 98,
-	SPI0_FRAME		= 99,
+	I2SDOUT0			= 96,
+	I2SBCLK0 			= 97,
+	I2SDIN0 			= 98,
+	I2SLRCK0 			= 99,
 
-	SPI0_TX			= 100,
-	SPI0_RX			= 101,
-	I2S_SEL_BT		= 102,
-	VOUT_DE_R		= 103,
-	AUDIO_INT		= 104,
-	AUDIO_MUTE		= 105,
-	AUDIO_RST_L		= 106,
-	GPIO_NUMBER_VALUES	= 107,
+	I2SMCLK0 			= 100,
+	I2C_SCL2		= 101,
+	I2C_SDA2		= 102,
+	SPI0_CLOCK		= 103,
+	SPI0_FRAME		= 104,
+	SPI0_TX			= 105,
+	SPI0_RX			= 106,
+	I2S_SEL_BT		= 107,
+	VOUT_DE_R		= 108,
+	AUDIO_INT		= 109,
+
+	AUDIO_MUTE		= 110,
+	AUDIO_RST_L		= 111,
+	GPIO_NUMBER_VALUES	=112,
 };
 
 //Physical Specifier Helpers

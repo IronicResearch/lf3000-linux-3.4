@@ -133,12 +133,14 @@ bool have_usb_power_option(void)
 		case LF2000_BOARD_VALENCIA_KND_1024_600_8:
 		case LF3000_BOARD_R3K:
 		case LF3000_BOARD_CABO:
-		case LF3000_BOARD_LIMA:
 		case LF3000_BOARD_XANADU:
 		case LF3000_BOARD_XANADU_TI:
 		case LF3000_BOARD_XANADU_TI_SS1:
 		case LF3000_BOARD_XANADU_TI_SS2:
 		case LF3000_BOARD_BOGOTA:
+		case LF3000_BOARD_BOGOTA_EXP_1:
+		case LF3000_BOARD_BOGOTA_EXP_2:
+		case LF3000_BOARD_BOGOTA_EXP_3:
 			return(1);
 			break;
 
@@ -200,9 +202,6 @@ enum lf2000_leapfrog_platform get_leapfrog_platform(void)
 		case LF3000_BOARD_CABO:
 			return CABO;
 
-		case LF3000_BOARD_LIMA:
-			return LIMA;
-
 		case LF3000_BOARD_GLASGOW_ALPHA:
 		case LF3000_BOARD_GLASGOW_BETA:
 		case LF3000_BOARD_GLASGOW_FEP_984_666:
@@ -223,6 +222,9 @@ enum lf2000_leapfrog_platform get_leapfrog_platform(void)
 			return XANADU;
 		
 		case LF3000_BOARD_BOGOTA:
+		case LF3000_BOARD_BOGOTA_EXP_1:
+		case LF3000_BOARD_BOGOTA_EXP_2:
+		case LF3000_BOARD_BOGOTA_EXP_3:
 			return BOGOTA;
 
 		default:
@@ -614,12 +616,14 @@ enum lf2000_lcd_size get_lcd_size(void)
 		case LF2000_BOARD_VALENCIA_KND_1024_600:
 		case LF2000_BOARD_VALENCIA_KND_1024_600_8:
 		case LF3000_BOARD_R3K:
-		case LF3000_BOARD_LIMA:
 		case LF3000_BOARD_XANADU:
 		case LF3000_BOARD_XANADU_TI:
 		case LF3000_BOARD_XANADU_TI_SS1:
 		case LF3000_BOARD_XANADU_TI_SS2:
 		case LF3000_BOARD_BOGOTA:
+		case LF3000_BOARD_BOGOTA_EXP_1:
+		case LF3000_BOARD_BOGOTA_EXP_2:
+		case LF3000_BOARD_BOGOTA_EXP_3:
 			return LCD_1024_600;
 
 		default:

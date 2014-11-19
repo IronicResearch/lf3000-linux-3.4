@@ -171,7 +171,7 @@ static int set_sample_rate_clock(struct clk *clk, unsigned long request,
 	if (0 == dio)
 		goto done;
 
-#if defined(CONFIG_PLAT_NXP4330_CABO) || defined(CONFIG_PLAT_NXP4330_XANADU)
+#if defined(CONFIG_PLAT_NXP4330_BOGOTA) || defined(CONFIG_PLAT_NXP4330_CABO) || defined(CONFIG_PLAT_NXP4330_XANADU)
 	/* calculate clock divider from active PLL frequency */
 	rate = clk_set_rate(clk, clock);
 	div = rate / clock;
