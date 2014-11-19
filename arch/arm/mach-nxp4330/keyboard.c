@@ -8,7 +8,7 @@
 #define COMMON_DEBOUNCE_INTERVAL 50
 
 static struct gpio_keys_button lf3000_buttons[] = {
-#ifndef CONFIG_PLAT_NXP4330_GLASGOW_ALPHA
+#ifndef CONFIG_PLAT_NXP4330_GLASGOW
 	{
 		.type	= EV_KEY,
 		.code	= KEY_A,
