@@ -1135,8 +1135,8 @@ void lf3000_gpio_init_map(void)
 #elif defined(CONFIG_PLAT_NXP4330_CABO)
 			printk(KERN_WARNING "defaulting to CABO GPIO mapping\n");
 			init_cabo();
-#elif defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA)
-			printk(KERN_WARNING "defaulting to GLASGOW (ALPHA) GPIO mapping\n");
+#elif defined(CONFIG_PLAT_NXP4330_GLASGOW)
+			printk(KERN_WARNING "defaulting to GLASGOW GPIO mapping\n");
 			init_glasgow();
 #elif defined(CONFIG_PLAT_NXP4330_R3K)
 			printk(KERN_WARNING "defaulting to R3K GPIO mapping\n");

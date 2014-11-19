@@ -147,7 +147,7 @@ static void bd_gpio_init(void)
 		p_io_pad = &io_pad_bogota_alpha;
 #elif defined(CONFIG_PLAT_NXP4330_CABO)
 		p_io_pad = &io_pad_cabo_alpha;
-#elif defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA)
+#elif defined(CONFIG_PLAT_NXP4330_GLASGOW)
 		p_io_pad = &io_pad_glasgow_alpha;
 #elif defined(CONFIG_PLAT_NXP4330_R3K)
 		p_io_pad = &io_pad_r3k;
@@ -256,7 +256,7 @@ static void bd_alive_init(void)
 		p_alv_pad = &alv_pad_bogota_alpha;
 #elif  defined(CONFIG_PLAT_NXP4330_CABO)
         p_alv_pad = &alv_pad_cabo_alpha;
-#elif  defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA)
+#elif  defined(CONFIG_PLAT_NXP4330_GLASGOW)
         p_alv_pad = &alv_pad_glasgow_alpha;
 #elif  defined(CONFIG_PLAT_NXP4330_R3K)
 		p_alv_pad = &alv_pad_r3k;
