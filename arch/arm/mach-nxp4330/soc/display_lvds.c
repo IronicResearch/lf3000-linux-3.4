@@ -64,19 +64,19 @@ static int  lvds_prepare(struct disp_process_dev *pdev)
 	int input = pdev->dev_in;
 	int clkid = DISP_CLOCK_LVDS;
 	unsigned int val;
-	int format = 1;	// 1: JEiDA, 0: VESA, 2:User
+	int format = 0;	// 1: JEiDA, 0: VESA, 2:User
 
-	//-------- ¹Ì¸® Á¤ÀÇµÈ Çü½Ä.
-	// VESA¿¡¼­ iTA¸¸ iTE·Î ±³Ã¼ÇÑ  Çü½ÄÀ¸·Î ³Ö¾îÁØ´Ù.
+	//-------- ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½Çµï¿½ ï¿½ï¿½ï¿½ï¿½.
+	// VESAï¿½ï¿½ï¿½ï¿½ iTAï¿½ï¿½ iTEï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½  ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö¾ï¿½ï¿½Ø´ï¿½.
 	// wire [34:0] loc_VideoIn = {4'hf, 4'h0, i_VDEN, i_VSYNC, i_HSYNC, i_VD[23:0] };
 	U32 VSYNC = 25;
 	U32 HSYNC = 24;
-	U32 VDEN  = 26; // bit À§Ä¡.
+	U32 VDEN  = 26; // bit ï¿½ï¿½Ä¡.
 	U32 ONE   = 34;
 	U32 ZERO  = 27;
 
 	//====================================================
-	// ÀÏ´Ü ÇöÀç´Â locationÀº »ç¿ëÇÏ°í ÀÖÁö ¾Ê´Ù.
+	// ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ locationï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê´ï¿½.
 	//====================================================
 	U32 LOC_A[7] = {ONE,ONE,ONE,ONE,ONE,ONE,ONE};
 	U32 LOC_B[7] = {ONE,ONE,ONE,ONE,ONE,ONE,ONE};

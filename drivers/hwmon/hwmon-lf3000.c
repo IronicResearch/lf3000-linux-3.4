@@ -1419,6 +1419,9 @@ unsigned int detect_usb_charger(void)
 			break;
 
 		case LF3000_BOARD_BOGOTA:
+		case LF3000_BOARD_BOGOTA_EXP_1:
+		case LF3000_BOARD_BOGOTA_EXP_2:
+		case LF3000_BOARD_BOGOTA_EXP_3:
 		case LF3000_BOARD_XANADU:
 #ifdef CONFIG_TC7734_PMIC
 			if(tc7734_is_usb_present()){
@@ -1497,6 +1500,9 @@ static unsigned int set_adc_slope_value(void)
 			slope =  263; // (4200 / 4095) * 256
 			break;
 		case LF3000_BOARD_BOGOTA:
+		case LF3000_BOARD_BOGOTA_EXP_1:
+		case LF3000_BOARD_BOGOTA_EXP_2:
+		case LF3000_BOARD_BOGOTA_EXP_3:
 		case LF3000_BOARD_XANADU:
 		case LF3000_BOARD_XANADU_TI:
 		case LF3000_BOARD_XANADU_TI_SS1:

@@ -80,10 +80,9 @@ static void set_gpio_strength(U32 Group, U32 BitNumber, U32 mA)
 		default: drv0 = 0; drv1 = 0; break;
 	}
 
-	drv1_value = NX_GPIO_GetDRV1(Group) & ~(1 << BitNumber);
-	drv0_value = NX_GPIO_GetDRV0(Group) & ~(1 << BitNumber);
-	if (drv1) drv1_value |= (drv1 << BitNumber);
-	if (drv0) drv0_value |= (drv0 << BitNumber);
+	drv0_value  = NX_GPIO_GetDRV0(Group);
+	drv0_value &= ~((U32)    1 << BitNumber);
+	drv0_value |=  ((U32) drv0 << BitNumber);
 
 	drv1_value  = NX_GPIO_GetDRV1( Group);
 	drv1_value &= ~((U32)    1 << BitNumber);
@@ -107,6 +106,9 @@ static void bd_gpio_init(void)
 	switch(system_rev) {
 
 	case LF3000_BOARD_BOGOTA:
+	case LF3000_BOARD_BOGOTA_EXP_1:
+	case LF3000_BOARD_BOGOTA_EXP_2:
+	case LF3000_BOARD_BOGOTA_EXP_3:
 		p_io_pad = &io_pad_bogota_alpha;
 		break;
 
@@ -196,12 +198,6 @@ static void bd_gpio_init(void)
 			NX_GPIO_SetPullUpEnable(index, bit, (plup ? CTRUE : CFALSE));
 			set_gpio_strength(index, bit, stren); /* pad strength */
 		}
-#if !defined(CONFIG_PLAT_NXP4330_XANADU)
-		// FIXME: sesters force GPIO settings
-		NX_GPIO_SetDRV0(index, 0xFFFFFFFF);
-		NX_GPIO_SetDRV1(index, 0x00000000);
-		//printk(KERN_INFO "(%d: strength0 = %u strength1 = %u)\n", index, stren0, stren1);
-#endif
 	}
 }
 
@@ -216,6 +212,9 @@ static void bd_alive_init(void)
 	switch(system_rev) {
 
 	case LF3000_BOARD_BOGOTA:
+	case LF3000_BOARD_BOGOTA_EXP_1:
+	case LF3000_BOARD_BOGOTA_EXP_2:
+	case LF3000_BOARD_BOGOTA_EXP_3:
 		p_alv_pad = &alv_pad_bogota_alpha;
 		break;
 
@@ -255,13 +254,13 @@ static void bd_alive_init(void)
 #if    defined(CONFIG_PLAT_NXP4330_BOGOTA)
 		p_alv_pad = &alv_pad_bogota_alpha;
 #elif  defined(CONFIG_PLAT_NXP4330_CABO)
-        p_alv_pad = &alv_pad_cabo_alpha;
+		p_alv_pad = &alv_pad_cabo_alpha;
 #elif  defined(CONFIG_PLAT_NXP4330_GLASGOW_ALPHA)
-        p_alv_pad = &alv_pad_glasgow_alpha;
+		p_alv_pad = &alv_pad_glasgow_alpha;
 #elif  defined(CONFIG_PLAT_NXP4330_R3K)
 		p_alv_pad = &alv_pad_r3k;
 #elif  defined(CONFIG_PLAT_NXP4330_XANADU)
-        p_alv_pad = &alv_pad_xanadu_alpha;
+		p_alv_pad = &alv_pad_xanadu_alpha;
 #endif
 		break;
 	}

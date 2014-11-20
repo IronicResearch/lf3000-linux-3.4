@@ -1088,6 +1088,9 @@ void lf3000_gpio_init_map(void)
 	/* remap GPIOs based on Board Revision */
 	switch(system_rev) {
 		case LF3000_BOARD_BOGOTA:
+		case LF3000_BOARD_BOGOTA_EXP_1:
+		case LF3000_BOARD_BOGOTA_EXP_2:
+		case LF3000_BOARD_BOGOTA_EXP_3:
 			init_bogota();
 			break;
 			
