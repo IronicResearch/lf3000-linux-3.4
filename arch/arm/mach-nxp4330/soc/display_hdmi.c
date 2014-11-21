@@ -182,6 +182,8 @@ static int hdmi_probe(struct platform_device *pdev)
     u32 preferred_preset;
     int ret = 0;
 
+    pr_debug("%s entered\n", __func__);
+
     RET_ASSERT_VAL(plat, -EINVAL);
     RET_ASSERT_VAL(plat->display_in == DISP_DEVICE_SYNCGEN0 ||
             plat->display_in == DISP_DEVICE_SYNCGEN1 ||
