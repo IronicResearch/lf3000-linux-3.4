@@ -66,7 +66,7 @@ extern struct ion_device *get_global_ion_device(void);
 #define SUPPORT_ALTER_HARDWARE_STATE
 
 
-#if (1)
+#if (0)
 #define	DUMP_VAR_SCREENINFO
 #define pr_debug		pr_info
 #endif
@@ -256,8 +256,10 @@ static int nxp_fb_dev_enable(struct nxp_fb_param *par, bool on, int force)
 	int module = par->fb_dev.device_id;
 	int stat = 0;
 
+#if defined(CONFIG_NXP4330_LEAPFROG)
 	// FIXME
 	return 0;
+#endif
 
 	if (-1 == module)
 		return 0;
@@ -417,14 +419,14 @@ nxp_fb_init_display(struct fb_info *info)
 
 	#if defined(CONFIG_LOGO_NEXELL_COPY)
 	nxp_fb_copy_boot_logo(par, (xres * yres * pixel));
-	#elif 1
+	#elif defined(CONFIG_NXP4330_LEAPFROG)
 	// don't clear framebuffer memory
 	#else
 	memset((void*)par->fb_dev.fb_vir_base,
 			FB_CLEAR_COLOR, par->fb_dev.fb_phy_len);
 	#endif
 
-	#if 0 // !defined(CONFIG_BACKLIGHT_PWM) || !defined(CONFIG_LOGO_NEXELL_COPY)
+	#if !defined(CONFIG_BACKLIGHT_PWM) && !defined(CONFIG_LOGO_NEXELL_COPY) && !defined(CONFIG_NXP4330_LEAPFROG)
 	nxp_fb_dev_enable(par, false, 1);	/* display out : off */
     #endif
 
@@ -1218,10 +1220,14 @@ static int nxp_fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *inf
 
 	offset = (var->yoffset * info->fix.line_length) +
 			 (var->xoffset * (var->bits_per_pixel>>3));
+#if !defined(CONFIG_NXP4330_LEAPFROG)
 	if (offset % align)
 		offset = (offset + align - 1)/align * align;
+#else
+	(void)align;
+#endif
 
-#ifdef CONFIG_FB_NEXELL_ION_MEM
+#if defined(CONFIG_FB_NEXELL_ION_MEM) && !defined(CONFIG_NXP4330_LEAPFROG)
     if (var->bits_per_pixel == 32) {
         unsigned int index = offset / align;
         dev->fb_pan_phys = dev->dma_buf_data.context[index].dma_addr;
@@ -1369,7 +1375,6 @@ static int nxp_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long ar
         break;
 #endif
 #ifdef CONFIG_FB_NEXELL_LFEXT
-	switch (cmd) {
 		case FBIO_WAITFORVSYNC:
 			// return vsync status without waiting
 			return NX_MLC_GetDirtyFlag(module, layer);
@@ -1462,7 +1467,7 @@ static int nxp_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long ar
 			struct fb_vblank vblank;
 			memset(&vblank, 0, sizeof(vblank));
 			vblank.flags = FB_VBLANK_HAVE_COUNT;
-			// FIXME vblank.count = nxp_soc_disp_stat_vertical_sync(module);
+			vblank.count = nxp_soc_disp_stat_vertical_sync(module);
 			if (copy_to_user(argp, (void *)&vblank, sizeof(struct fb_vblank)))
 				return -EFAULT;
 			}
@@ -1489,7 +1494,6 @@ static int nxp_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long ar
 
 		default:
 			return -ENOIOCTLCMD;
-	}
 #endif
     }
 	return ret;
@@ -1561,7 +1565,7 @@ static int nxp_fb_probe(struct platform_device *pdev)
 	struct fb_info *info = NULL;
 #ifdef CONFIG_FB_NEXELL_ION_MEM
     struct nxp_fb_device *fbdev;
-    struct nxp_fb_device *fbdev_layer = fbdev;
+    struct nxp_fb_device *fbdev_layer = NULL;
 	struct nxp_fb_param *fbpar;
 #endif
 	int i = 0, ret = 0;

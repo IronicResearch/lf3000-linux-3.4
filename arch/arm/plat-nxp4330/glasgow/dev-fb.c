@@ -37,8 +37,10 @@ static struct nxp_fb_plat_data fb0_plat_data = {
 	#ifdef CONFIG_ANDROID
 	.buffers		= 3,
 	.skip_pan_vsync	= 1,
+	#elif defined(CONFIG_NXP4330_LEAPFROG)
+	.buffers		= 4,
 	#else
-	.buffers		= 4, //2,
+	.buffers		= 2,
 	#endif
 	.lcd_with_mm	= CFG_DISP_PRI_LCD_WIDTH_MM,	/* 152.4 */
 	.lcd_height_mm	= CFG_DISP_PRI_LCD_HEIGHT_MM,	/* 91.44 */

@@ -45,10 +45,10 @@
 		int _lr, _tb;	\
 		_lr = ReadIODW((volatile U32 *)&(((struct NX_MLC_RegisterSet*)IO_ADDRESS(NX_MLC_GetPhysicalAddress(m)))->MLCRGBLAYER[l].MLCLEFTRIGHT));	\
 		_tb = ReadIODW((volatile U32 *)&(((struct NX_MLC_RegisterSet*)IO_ADDRESS(NX_MLC_GetPhysicalAddress(m)))->MLCRGBLAYER[l].MLCTOPBOTTOM));	\
-		*(unsigned int*)L = ((_lr >> 16) & 0xFFUL);	\
-		*(unsigned int*)T = ((_tb >> 16) & 0xFFUL);	\
-		*(unsigned int*)R = ((_lr >>  0) & 0xFFUL);	\
-		*(unsigned int*)B = ((_tb >>  0) & 0xFFUL);	\
+		*(unsigned int*)L = ((_lr >> 16) & 0xFFFUL) | (_lr & 0x8000000 ? 0xfffff000 : 0x0);	\
+		*(unsigned int*)T = ((_tb >> 16) & 0xFFFUL) | (_tb & 0x8000000 ? 0xfffff000 : 0x0); \
+		*(unsigned int*)R = ((_lr >>  0) & 0xFFFUL) | (_lr & 0x800 ? 0xfffff000 : 0x0);		\
+		*(unsigned int*)B = ((_tb >>  0) & 0xFFFUL) | (_tb & 0x800 ? 0xfffff000 : 0x0);		\
 		} while (0)
 
 #define	NX_MLC_GetVideoLayerAddressYUYV(m, a, s)	do { \
@@ -79,10 +79,10 @@
 		int _lr, _tb;	\
 		_lr = ReadIODW((volatile U32 *)&(((struct NX_MLC_RegisterSet*)IO_ADDRESS(NX_MLC_GetPhysicalAddress(m)))->MLCVIDEOLAYER.MLCLEFTRIGHT));	\
 		_tb = ReadIODW((volatile U32 *)&(((struct NX_MLC_RegisterSet*)IO_ADDRESS(NX_MLC_GetPhysicalAddress(m)))->MLCVIDEOLAYER.MLCTOPBOTTOM));	\
-		*(unsigned int*)L = ((_lr >> 16) & 0xFFUL);	\
-		*(unsigned int*)T = ((_tb >> 16) & 0xFFUL);	\
-		*(unsigned int*)R = ((_lr >>  0) & 0xFFUL);	\
-		*(unsigned int*)B = ((_tb >>  0) & 0xFFUL);	\
+		*(unsigned int*)L = ((_lr >> 16) & 0xFFFUL) | (_lr & 0x8000000 ? 0xfffff000 : 0x0);	\
+		*(unsigned int*)T = ((_tb >> 16) & 0xFFFUL) | (_tb & 0x8000000 ? 0xfffff000 : 0x0); \
+		*(unsigned int*)R = ((_lr >>  0) & 0xFFFUL) | (_lr & 0x800 ? 0xfffff000 : 0x0);		\
+		*(unsigned int*)B = ((_tb >>  0) & 0xFFFUL) | (_tb & 0x800 ? 0xfffff000 : 0x0);		\
 		} while (0)
 
 #endif /* __DISPLAY_4330_H__ */
