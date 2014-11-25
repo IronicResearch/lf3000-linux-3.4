@@ -125,6 +125,9 @@ struct mtd_write_req {
 struct mtd_info_user {
 	__u8 type;
 	__u32 flags;
+/* FWBOG 147: SP 112514 - If we plan on using this kernel for Glasgow or any other previous platforms,
+ * we should make selection of u32 vs u64 based on kernel version. Leaving it as is for now. 
+ * /
 //	__u32 size;	/* Total size of the MTD */
 	__u64 size;	/* freestyle: Total size of the MTD */
 	__u32 erasesize;
