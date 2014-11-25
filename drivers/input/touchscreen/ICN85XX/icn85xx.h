@@ -152,7 +152,7 @@ extern int sprd_3rdparty_tp_ldo_level;
 #ifdef CONFIG_PLAT_NXP4330_CABO
 #define SCREEN_MAX_X             (480)
 #define SCREEN_MAX_Y             (272)
-#elif defined(CONFIG_PLAT_NXP4330_XANADU)
+#elif defined(CONFIG_PLAT_NXP4330_XANADU) ||  defined(CONFIG_PLAT_NXP4330_BOGOTA)
 #define SCREEN_MAX_X             (1024)
 #define SCREEN_MAX_Y             (600)
 #else
