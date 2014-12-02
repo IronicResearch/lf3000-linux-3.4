@@ -572,7 +572,7 @@ static int nxp_fb_setup_ion(struct nxp_fb_dma_buf_data *d)
     }
 
     d->ion_client = ion_client_create(ion_dev,
-            // ION_HEAP_NXP_CONTIG_MASK, /* FIXME: sesters, removed from Linux 3.4.39 kernel */
+            // ION_HEAP_NXP_CONTIG_MASK, /* FIXME: sesters, removed from Android */
             "nxp-fb");
     if (IS_ERR(d->ion_client)) {
         pr_err("%s error: fail to ion_client_create()\n", __func__);
