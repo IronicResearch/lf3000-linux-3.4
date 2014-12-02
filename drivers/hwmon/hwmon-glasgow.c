@@ -45,7 +45,7 @@
 #include <linux/interrupt.h>
 
 #include <mach/platform.h>
-#include <mach/power.h>
+#include <plat/power.h>
 #include <mach/lfp100.h>
 #include <mach/tc7734.h>
 #include <mach/adc.h>
@@ -65,10 +65,10 @@
 #include <asm/system_info.h>
 
 /* FIXME */
-#include "../../arch/arm/mach-nxp4330/board_revisions.h"
+#include "mach/board_revisions.h"
 
-#include "../../arch/arm/mach-nxp4330/prototype/module/nx_alive.h"
-#include <mach/alive.h>
+#include "nx_alive.h"
+#include "alive.h"
 
 /*
  * power hardware

@@ -93,6 +93,12 @@ choice
 		depends on NXP4330_LEAPFROG
 		help
 			Support for LeapFrog Bogota tablet
+
+	config PLAT_NXP4330_GLASGOW
+		bool "GLASGOW: Leapfrog Glasgow console"
+		depends on NXP4330_LEAPFROG
+		help
+			Support for LeapFrog Glasgow console
 endchoice
 endif
 

@@ -159,6 +159,7 @@ struct disp_control_info {
 	struct lcd_operation    *lcd_ops;		/* LCD and Backlight */
 	struct disp_multily_dev  multilayer;
 	struct disp_process_dev	*proc_dev;
+	unsigned int		vsync_counter;
 #if 0
 	void (*callback)(void *);
 	void  *callback_data;
@@ -365,6 +366,7 @@ static int disp_multily_enable(struct disp_control_info *info, int enable)
 		pmly->x_resol = psync->h_active_len;
 		pmly->y_resol = psync->v_active_len;
 		pmly->interlace = psync->interlace;
+		pmly->mem_lock_len = 16;	/* fix mem lock size, par->mem_lock_size */
 
 		xresol = pmly->x_resol;
 		yresol = pmly->y_resol;
@@ -464,6 +466,7 @@ static irqreturn_t	disp_syncgen_irqhandler(int irq, void *desc)
 	int module = info->module;
 	int version = nxp_cpu_version();
 
+	info->vsync_counter++;
 	info->condition = 1;
 	wake_up_interruptible(&info->wait_queue);
 
@@ -510,12 +513,13 @@ static irqreturn_t	disp_syncgen_irqhandler(int irq, void *desc)
 static void disp_syncgen_initialize(void)
 {
 	int power = nxp_soc_rsc_status(RESET_ID_DISPLAY);
+	int disptop = nxp_soc_rsc_status(RESET_ID_DISP_TOP);
 	int i = 0;
 
-	printk("Disply Reset Status : %s\n", power?"On":"Off");
+	printk("Display Reset Status : %s,%s\n", power?"On":"Off", disptop?"On":"Off");
 
 	/* reset */
-	if (!power) {
+	if (!power || !disptop) {
 		disp_topctl_reset();
 		disp_syncgen_reset();
 		printk("Disply Reset Top/Syncgen ...\n");
@@ -1418,7 +1422,7 @@ int nxp_soc_disp_video_set_position(int module, int left, int top,
 	/* set scale */
 	NX_MLC_SetVideoLayerScale(module, srcw, srch, dstw, dsth,
 					(CBOOL)hf, (CBOOL)hf, (CBOOL)vf, (CBOOL)vf);
-	NX_MLC_SetPosition(module, MLC_LAYER_VIDEO, left, top, right-1, bottom-1);
+	NX_MLC_SetPosition(module, MLC_LAYER_VIDEO, left, top, right-0, bottom-0); // FIXME
 	NX_MLC_SetDirtyFlag(module, MLC_LAYER_VIDEO);
 	disp_syncgen_waitsync(module, MLC_LAYER_VIDEO, waitvsync);
 
@@ -1688,6 +1692,12 @@ unsigned int nxp_soc_disp_get_bg_color(int module)
 int nxp_soc_disp_wait_vertical_sync(int module)
 {
 	return disp_syncgen_waitsync(module, 0, 1);
+}
+
+unsigned int nxp_soc_disp_stat_vertical_sync(int module)
+{
+	DISP_CONTROL_INFO(module, info);
+	return info->vsync_counter;
 }
 
 void nxp_soc_disp_layer_set_enable (int module, int layer, int enable)
@@ -2298,6 +2308,7 @@ EXPORT_SYMBOL(nxp_soc_disp_get_resolution);
 EXPORT_SYMBOL(nxp_soc_disp_set_bg_color);
 EXPORT_SYMBOL(nxp_soc_disp_get_bg_color);
 EXPORT_SYMBOL(nxp_soc_disp_wait_vertical_sync);
+EXPORT_SYMBOL(nxp_soc_disp_stat_vertical_sync);
 EXPORT_SYMBOL(nxp_soc_disp_layer_set_enable);
 EXPORT_SYMBOL(nxp_soc_disp_layer_stat_enable);
 /* RGB Layer */

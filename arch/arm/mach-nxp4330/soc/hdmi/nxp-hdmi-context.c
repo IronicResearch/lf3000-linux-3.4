@@ -1141,10 +1141,12 @@ bool hdmi_is_connected(void)
 
 uint32_t hdmi_get_edid_preset(struct nxp_hdmi_context *me, uint32_t preferred_preset)
 {
+#if 0	// FIXME: I2C needed for EDID
     if (me->edid.update(&me->edid) < 0) {
         pr_err("%s: failed to edid update\n", __func__);
         return preferred_preset;
     }
+#endif
 
     if(me->edid.supports_preset(&me->edid, preferred_preset)) {
         pr_err("%s: preferred_preset is supported\n", __func__);
