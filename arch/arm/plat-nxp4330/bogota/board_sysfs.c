@@ -131,16 +131,16 @@ bool have_usb_power_option(void)
 		case LF2000_BOARD_VALENCIA_KND_800_480_8:
 		case LF2000_BOARD_VALENCIA_KND_1024_600:
 		case LF2000_BOARD_VALENCIA_KND_1024_600_8:
-		case LF3000_BOARD_R3K:
-		case LF3000_BOARD_CABO:
-		case LF3000_BOARD_XANADU:
-		case LF3000_BOARD_XANADU_TI:
-		case LF3000_BOARD_XANADU_TI_SS1:
-		case LF3000_BOARD_XANADU_TI_SS2:
 		case LF3000_BOARD_BOGOTA:
 		case LF3000_BOARD_BOGOTA_EXP_1:
 		case LF3000_BOARD_BOGOTA_EXP_2:
 		case LF3000_BOARD_BOGOTA_EXP_3:
+		case LF3000_BOARD_CABO:
+		case LF3000_BOARD_R3K:
+		case LF3000_BOARD_XANADU:
+		case LF3000_BOARD_XANADU_TI:
+		case LF3000_BOARD_XANADU_TI_SS1:
+		case LF3000_BOARD_XANADU_TI_SS2:
 			return(1);
 			break;
 
@@ -228,10 +228,12 @@ enum lf2000_leapfrog_platform get_leapfrog_platform(void)
 			return BOGOTA;
 
 		default:
-#if   defined(CONFIG_PLAT_NXP4330_R3K)
-			return RIO;
+#if   defined(CONFIG_PLAT_NXP4330_BOGOTA)
+			return BOGOTA;
 #elif defined(CONFIG_PLAT_NXP4330_CABO)
 			return CABO;
+#elif defined(CONFIG_PLAT_NXP4330_R3K)
+			return RIO;
 #elif defined(CONFIG_PLAT_NXP4330_XANADU)
 			return XANADU;
 #else
@@ -627,13 +629,13 @@ enum lf2000_lcd_size get_lcd_size(void)
 			return LCD_1024_600;
 
 		default:
-#if   defined(CONFIG_PLAT_NXP4330_R3K)
+#if   defined(CONFIG_PLAT_NXP4330_BOGOTA)
 			return LCD_1024_600;
 #elif defined(CONFIG_PLAT_NXP4330_CABO)
 			return LCD_480_272;
-#elif defined(CONFIG_PLAT_NXP4330_XANADU)
+#elif defined(CONFIG_PLAT_NXP4330_R3K)
 			return LCD_1024_600;
-#elif defined(CONFIG_PLAT_NXP4330_BOGOTA)
+#elif defined(CONFIG_PLAT_NXP4330_XANADU)
 			return LCD_1024_600;
 #else
 			return LCD_UNKNOWN;
