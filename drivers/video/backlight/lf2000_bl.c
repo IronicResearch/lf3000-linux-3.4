@@ -21,6 +21,7 @@
 #include <mach/pwm.h>
 #include <mach/gpio.h>
 #include <mach/lfp100.h>
+#include <mach/devices.h>
 
 #define LF2000_NO_BRIGHTNESS		 -1	// brightness not set
 #define LF2000_INITIAL_BRIGHTNESS	318	// nominal second brightest
@@ -197,7 +198,7 @@ static struct platform_driver lf2000_bl_driver = {
 	.probe	= lf2000_bl_probe,
 	.remove	= __exit_p(lf2000_bl_remove),
 	.driver = {
-		.name	= "lf2000-bl",
+		.name	= DEV_NAME_LF_BL,
 		.owner	= THIS_MODULE,
 	},
 };

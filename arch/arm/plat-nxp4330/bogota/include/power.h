@@ -30,7 +30,7 @@
 /*
  * Lower critical battery level below hardware shutoff,
  * allowing play until you die.  Can still adjust level via
- * /sys/devices/platform/lf1000-power/critical_battery_mv interface
+ * /sys/devices/platform/xxx/critical_battery_mv interface
  */
 #define CRITICAL_BATTERY_MV 0	/* critical low battery		*/
 
