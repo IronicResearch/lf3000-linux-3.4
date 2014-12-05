@@ -288,6 +288,10 @@ MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_AUTHOR("Alan Stern");
 MODULE_LICENSE("Dual BSD/GPL");
 
+#if defined(CONFIG_USB_DWCOTG_MODULE)
+MODULE_DEPENDS(dwc_otg);
+#endif
+
 /*
  * This driver assumes self-powered hardware and has no way for users to
  * trigger remote wakeup.  It uses autoconfiguration to select endpoints
@@ -1601,10 +1605,42 @@ static int do_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 	buf[3] = 2;		// SCSI-2 INQUIRY data format
 	buf[4] = 31;		// Additional length
 				// No special options
+
+#ifdef CONFIG_ARCH_NXP4330
+	/*switch(get_leapfrog_platform())
+	{
+		case LUCY:
+			sprintf(buf + 8, "%-8s%-16s%04x", "LeapFrog",
+				(mod_data.cdrom ? product_cdrom_id :
+					PRODUCT_ID_VOL_LUCY),
+				mod_data.release);
+			break;
+		case RIO:
+			sprintf(buf + 8, "%-8s%-16s%04x", "LeapFrog",
+				(mod_data.cdrom ? product_cdrom_id :
+					PRODUCT_ID_VOL_RIO),
+				mod_data.release);
+			break;
+		case VALENCIA:
+			sprintf(buf + 8, "%-8s%-16s%04x", "LeapFrog",
+				(mod_data.cdrom ? product_cdrom_id :
+					PRODUCT_ID_VOL_VALENCIA),
+				mod_data.release);
+			break;
+		default:
+			break;
+	}*/
+	/* FIXME: Should use a switch like above */
+	sprintf(buf + 8, "%-8s%-16s%04x", "LeapFrog",
+	(mod_data.cdrom ? product_cdrom_id :
+		PRODUCT_ID_VOL_RIO),
+	mod_data.release);
+#else
 	sprintf(buf + 8, "%-8s%-16s%04x", vendor_id,
 			(mod_data.cdrom ? product_cdrom_id :
 				product_disk_id),
 			mod_data.release);
+#endif
 	return 36;
 }
 
@@ -3330,6 +3366,18 @@ static int __init check_parameters(struct fsg_dev *fsg)
 	return 0;
 }
 
+static void set_fsg_string(int id, const char* string)
+{
+	struct usb_string* curstr;
+	for(curstr = fsg_strings; curstr->id > 0; curstr++)
+	{
+		if(curstr->id == id)
+		{
+			curstr->s = string;
+			break;
+		}
+	}
+}
 
 static int __init fsg_bind(struct usb_gadget *gadget)
 {
@@ -3519,10 +3567,38 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 	/* This should reflect the actual gadget power source */
 	usb_gadget_set_selfpowered(gadget);
 
+#ifdef CONFIG_ARCH_NXP4330
+	snprintf(fsg_string_manufacturer, sizeof fsg_string_manufacturer,
+			"%s", MANUFACTURER_ID_STRING);
+
+	/*switch(get_leapfrog_platform())
+	{
+		case LUCY:
+			device_desc.idProduct = cpu_to_le16(FSG_PRODUCT_ID_LUCY);
+			set_fsg_string(FSG_STRING_PRODUCT, PRODUCT_ID_STRING_LUCY);
+			break;
+		case RIO:
+			device_desc.idProduct = cpu_to_le16(FSG_PRODUCT_ID_RIO);
+			set_fsg_string(FSG_STRING_PRODUCT, PRODUCT_ID_STRING_RIO);
+			break;
+		case VALENCIA:
+			device_desc.idProduct = cpu_to_le16(FSG_PRODUCT_ID_VALENCIA);
+			set_fsg_string(FSG_STRING_PRODUCT, PRODUCT_ID_STRING_VALENCIA);
+			break;
+		default:
+			break;
+	}*/
+	/* FIXME: Use switch statement above */
+	device_desc.idProduct = cpu_to_le16(FSG_PRODUCT_ID_RIO);
+	set_fsg_string(FSG_STRING_PRODUCT, PRODUCT_ID_STRING_RIO);
+
+	
+#else
 	snprintf(fsg_string_manufacturer, sizeof fsg_string_manufacturer,
 			"%s %s with %s",
 			init_utsname()->sysname, init_utsname()->release,
 			gadget->name);
+#endif
 
 	fsg->thread_task = kthread_create(fsg_main_thread, fsg,
 			"file-storage-gadget");
