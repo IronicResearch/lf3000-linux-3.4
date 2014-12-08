@@ -94,6 +94,12 @@ choice
 		help
 			Support for LeapFrog Bogota tablet
 
+	config PLAT_NXP4330_XANADU
+		bool "XANADU: Leapfrog Xanadu tablet"
+		depends on NXP4330_LEAPFROG
+		help
+			Support for LeapFrog Xanadu tablet
+
 	config PLAT_NXP4330_GLASGOW
 		bool "GLASGOW: Leapfrog Glasgow console"
 		depends on NXP4330_LEAPFROG
