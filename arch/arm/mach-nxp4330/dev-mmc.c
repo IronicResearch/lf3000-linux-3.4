@@ -53,6 +53,91 @@ static int __dwmci_get_bus_wd(u32 slot_id)
 
 static void __dwmci_set_io_timing(void *data, unsigned char timing)
 {
+	/* SP120214 - Just copying this over from old kernel for historical purposes. 
+	 * The CLKSEL (called CLKCTRL in new kernel) register is written by probe now. 
+	 * But this has the information from Paul M's experiments for 
+	 * which values worked and which did not...*/
+#if 0
+	struct dw_mci *host = (struct dw_mci *)data;
+	struct dw_mci_board *pdata = host->pdata;
+	u32 clksel, rddqs, dline;
+
+	if (timing > MMC_TIMING_MMC_HS200) {
+		pr_err("%s: timing(%d): not suppored\n", __func__, timing);
+		return;
+	}
+
+	rddqs = DWMCI_DDR200_RDDQS_EN_DEF;
+	dline = DWMCI_DDR200_DLINE_CTRL_DEF;
+#if 0	/* Since we later assign 0x01010000 to clksel, let's skip this stuff */
+	clksel = __raw_readl(host->regs + DWMCI_CLKSEL);
+
+	if (timing == MMC_TIMING_MMC_HS200 || timing == MMC_TIMING_UHS_SDR104) {
+		clksel = (clksel & 0xfff8ffff) | (pdata->clk_drv << 16);
+	} else if (timing == MMC_TIMING_UHS_SDR50) {
+		clksel = (clksel & 0xfff8ffff) | (pdata->clk_drv << 16);
+	} else if (timing == MMC_TIMING_UHS_DDR50) {
+		clksel = pdata->ddr_timing;
+	} else {
+		clksel = pdata->sdr_timing;
+	}
+#endif
+
+#if 0	/* 9jan14   Experiment to adjust the phase shift for mmc2 (eMMC) */
+	/* Disabled for now because there were many errors when transferring
+	 * files from SD to eMMC.
+	 */
+	if (MMC_CAP_UHS_DDR50 & pdata->caps) {
+#if 1	/* 27jan14 */
+		clksel = 0x01010001;	/* saw all 4 partitions; errors*/
+					/* when trying to untar rootfs */
+					/* iospeed 33 */
+		//clksel = 0x01000000;		/* saw all 4 partitions; lots */
+						/* errors while mkfs'ing rootfs*/
+		//(closer) clksel = 0x00010000; /* saw all 4 partitions; errors*/
+						/* when untarring to rootfs and
+						 * bulk */
+		//(closer) clksel = 0x01010000; /* saw all 4 partitions; errors*/
+						/* when trying to mkfs on bulk*/
+						/* iospeed 33 */
+		//(closer) clksel = 0x01010001; /* saw all 4 partitions; errors*/
+						/* when trying to untar rootfs */
+						/* iospeed 33 */
+		//(closer) clksel = 0x01010002; /* saw all 4 partitions; errors*/
+						/* when trying to mkfs on bulk*/
+						/* iospeed 33 */
+		//(failed) clksel = 0x02010000; /* not a complete failure */
+		//(failed) clksel = 0x02010001; /* not a complete failure */
+		//(failed) clksel = 0x02010002; /* not a complete failure */
+		//(failed) clksel = 0x02020000; /* not a complete failure */
+		//(failed) clksel = 0x02020001; /* not a complete failure */
+		//(failed) clksel = 0x02020002; /* not a complete failure */
+		//(failed) clksel = 0x03020000;
+		//(failed) clksel = 0x03020001;
+		//(failed) clksel = 0x03020002;
+		//(failed) clksel = 0x03030000;
+		//(failed) clksel = 0x03030001;
+		//(failed) clksel = 0x03030002;	/* this is the value from Nexell */
+#else	/* earlier version */
+		clksel = (1 << 16);
+#endif	/* 27jan14 */
+		printk(KERN_INFO "%s(): clksel = 0x%x\n",
+			__func__, clksel);
+	}
+	else {
+		clksel = ((1 << 16) | (1 << 24));
+	}
+#else
+	clksel = ((1 << 16) | (1 << 24));
+#endif	/* 9jan14 */
+
+	__raw_writel(clksel, host->regs + DWMCI_CLKSEL);
+	__raw_writel(rddqs, host->regs + DWMCI_DDR200_RDDQS_EN);
+	__raw_writel(dline, host->regs + DWMCI_DDR200_DLINE_CTRL);
+	
+	//printk(KERN_INFO "CLKSEL = 0x%08x\n", 
+	//		__raw_readl(host->regs + DWMCI_CLKSEL));
+#endif
 }
 
 static int __dwmci_get_ocr(u32 slot_id)

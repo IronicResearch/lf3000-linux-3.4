@@ -22,6 +22,7 @@
 #include <mach/gpio.h>
 #include <mach/lfp100.h>
 #include <mach/devices.h>
+#include <mach/tc7734.h>
 
 #define LF2000_NO_BRIGHTNESS		 -1	// brightness not set
 #define LF2000_INITIAL_BRIGHTNESS	318	// nominal second brightest
@@ -42,9 +43,20 @@ static int intensity_to_lfp100_wled[LFP100_WLED_ENTRIES] = {
 	234, 245, 255, 266, 276, 287, 297, 308,
 	319, 345, 373, 401, 428, 456, 484, 512 };
 
+/* convert 9 bit intensity range to 5 bit WLED range */
+/* FIXME these values need to be calibrated for TC7734. */
+/* FIXME backlight driver should have everything in lumens, individual drivers should convert it to register settings. */
+#define TC7734_WLED_ENTRIES	32
+static int intensity_to_tc7734_wled[TC7734_WLED_ENTRIES] = {
+	 13,  25,  38,  50,  63,  76,  88, 101,
+	114, 126, 139, 151, 165, 182, 199, 217,
+	234, 245, 255, 266, 276, 287, 297, 308,
+	319, 345, 373, 401, 428, 456, 484, 512 };
+
 static int lf2000_intensity_to_wled(int intensity)
 {
 	int i;
+	if (lfp100_have_lfp100()) {
 	for (i = 0; i < LFP100_WLED_ENTRIES; i++) {
 		if (intensity < intensity_to_lfp100_wled[i])
 			break;
@@ -53,7 +65,22 @@ static int lf2000_intensity_to_wled(int intensity)
 		return i;
 	/* entry not found, at max */
 	return LFP100_WLED_ENTRIES - 1;
+	}
+	else if (tc7734_have_tc7734()) {
+		for (i = 0; i < TC7734_WLED_ENTRIES; i++) {
+				if (intensity < intensity_to_tc7734_wled[i])
+					break;
+			}
+			if (i < TC7734_WLED_ENTRIES)
+				return i;
+			/* entry not found, at max */
+			return TC7734_WLED_ENTRIES - 1;
+	}
 }
+
+
+
+
 
 static int lf2000_bl_get_brightness(struct backlight_device *bd)
 {
@@ -78,7 +105,11 @@ static int lf2000_bl_set_brightness(struct backlight_device *bd)
 	    if (lfp100_have_lfp100()) {
 	        priv->bl->props.brightness = 
 	            intensity_to_lfp100_wled[lfp100_read_reg(LFP100_WLED)] - 1; 
-	    } else {
+	    }
+	    else if (tc7734_have_tc7734()) {
+			priv->bl->props.brightness =
+				intensity_to_tc7734_wled[(tc7734_read_reg(TC7734_DDIM)&TC7734_BACKLIGHT_CONFIG_MASK)] - 1; //only read bits 4:0, bit 7 is phase select for TC7734.
+		}else {
 	        priv->bl->props.brightness = LF2000_INITIAL_BRIGHTNESS;
 	    }
 	}
@@ -89,6 +120,10 @@ static int lf2000_bl_set_brightness(struct backlight_device *bd)
 		lfp100_write_reg(LFP100_WLED, 
 			lf2000_intensity_to_wled(intensity));
 	}
+	else if (tc7734_have_tc7734()) {
+			tc7734_write_reg(TC7734_DDIM,
+				(lf2000_intensity_to_wled(intensity)&TC7734_BACKLIGHT_CONFIG_MASK|TC7734_LEDD_PS));
+		}
 #ifdef CONFIG_ARCH_LF1000
 	else {
 		if (pwm_set_duty_cycle(priv->pwm_channel, intensity))

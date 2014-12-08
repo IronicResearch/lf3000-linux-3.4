@@ -66,4 +66,4 @@ obj-$(CONFIG_BCM4354) += DHD_REL_1_141_64/
 obj-$(CONFIG_BRCMFMAC)	+= brcm80211/
 obj-$(CONFIG_BRCMSMAC)	+= brcm80211/
 
-Obj-$(CONFIG_ARCADYAN_BCM43143) += arcadyan/
+obj-$(CONFIG_ARCADYAN_BCM43143) += arcadyan/

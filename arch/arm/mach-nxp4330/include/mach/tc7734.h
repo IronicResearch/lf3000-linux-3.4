@@ -102,12 +102,15 @@
 #define TC7734_STAT1_USBAC		(1 << 5)
 #define TC7734_STATUS1_PB		0x01
 
-#define TC7734_STATE_SW_STANDBY		(1 << 2)
-#define TC7734_STATE_OFF		(1 << 3)
+#define TC7734_STATE_SW_STANDBY		(1 << 1)
+#define TC7734_STATE_OFF		(1 << 2)
 
 #define TC7734_ST_DISBAT	(1 << 7)
 
 #define TC7734_BACKLIGHT_CONFIG_MASK	0x3f
+
+/* FIXME set this value to 1 or 0 based on EE feedback 0: same phase with DCDC1 1:different phase with DCDC1*/
+#define TC7734_LEDD_PS      (1<<7)
  
 /* GPIO configuration */
 
