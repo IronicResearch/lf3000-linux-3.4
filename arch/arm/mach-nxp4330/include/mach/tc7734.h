@@ -102,8 +102,8 @@
 #define TC7734_STAT1_USBAC		(1 << 5)
 #define TC7734_STATUS1_PB		0x01
 
-#define TC7734_STATE_SW_STANDBY		(1 << 2)
-#define TC7734_STATE_OFF		(1 << 3)
+#define TC7734_STATE_SW_STANDBY		(1 << 1)
+#define TC7734_STATE_OFF		(1 << 2)
 
 #define TC7734_ST_DISBAT	(1 << 7)
 
