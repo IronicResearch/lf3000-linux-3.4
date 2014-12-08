@@ -44,6 +44,7 @@ static int intensity_to_lfp100_wled[LFP100_WLED_ENTRIES] = {
 
 /* convert 9 bit intensity range to 5 bit WLED range */
 /* FIXME these values need to be calibrated for TC7734. */
+/* FIXME backlight driver should have everything in lumens, individual drivers should convert it to register settings. */
 #define TC7734_WLED_ENTRIES	32
 static int intensity_to_tc7734_wled[TC7734_WLED_ENTRIES] = {
 	 13,  25,  38,  50,  63,  76,  88, 101,
