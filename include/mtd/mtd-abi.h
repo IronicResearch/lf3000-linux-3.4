@@ -127,9 +127,11 @@ struct mtd_info_user {
 	__u32 flags;
 /* FWBOG 147: SP 112514 - If we plan on using this kernel for Glasgow or any other previous platforms,
  * we should make selection of u32 vs u64 based on kernel version. Leaving it as is for now. 
+ * Update: SP 120514 - Actually, turns out this change appears only in Nexell kernel. We can stick to u32
+ * as per actual kernel.org code.
  * /
-//	__u32 size;	/* Total size of the MTD */
-	__u64 size;	/* freestyle: Total size of the MTD */
+//	__u64 size;	/* freestyle: Total size of the MTD */
+	__u32 size; /* Total size of the MTD */
 	__u32 erasesize;
 	__u32 writesize;
 	__u32 oobsize;	/* Amount of OOB data per block (e.g. 16) */
@@ -137,6 +139,10 @@ struct mtd_info_user {
 };
 
 struct region_info_user {
+/* SP 120514 - Another place where Nexell changed the variable size from 32 bit 
+ * to 64 bit. This isn't affecting anything as of now... But making a note, in case
+ * we need to switch back to u32 even in this case. 
+ * /
 //	__u32 offset;		/* At which this region starts,
 //				 * from the beginning of the MTD */
 	__u64 offset;		/* freestyle: At which this region starts, */
