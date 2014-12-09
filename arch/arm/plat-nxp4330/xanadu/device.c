@@ -631,7 +631,7 @@ static struct spi_board_info spi_plat_board[] __initdata = {
         .bus_num         = 0,           /* Note> set bus num, must be smaller than ARRAY_SIZE(spi_plat_device) */
         .chip_select     = 0,           /* Note> set chip select num, must be smaller than spi cs_num */
         .controller_data = &spi0_info,
-        .mode            = SPI_MODE_0,
+        .mode            = SPI_MODE_3 | SPI_CPOL | SPI_CPHA,
     },
 };
 
@@ -1657,8 +1657,9 @@ static int _dwmci0_get_cd(u32 slot_id)
 static struct dw_mci_board _dwmci0_data = {
 	.quirks		= DW_MCI_QUIRK_HIGHSPEED,
 	.bus_hz		= 100 * 1000 * 1000,
-	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA | MMC_CAP_NONREMOVABLE,
+	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA,
 	.detect_delay_ms= 200,
+	.clk_dly        = DW_MMC_DRIVE_DELAY(0) | DW_MMC_SAMPLE_DELAY(0) | DW_MMC_DRIVE_PHASE(1) | DW_MMC_SAMPLE_PHASE(1), // SP120114 - CLKCTRL = ((1 << 16) | (1 << 24))
 //	.sdr_timing	= 0x03020001,
 //	.ddr_timing	= 0x03030002,
 	.cd_type	= DW_MCI_CD_EXTERNAL,
@@ -1737,8 +1738,9 @@ static int _dwmci1_get_cd(u32 slot_id)
 static struct dw_mci_board _dwmci1_data = {
 	.quirks		= DW_MCI_QUIRK_HIGHSPEED,
 	.bus_hz		= 100 * 1000 * 1000,
-	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA,
+	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA | MMC_CAP_NONREMOVABLE | MMC_CAP_POWER_OFF_CARD,
 	.detect_delay_ms= 200,
+	.clk_dly        = DW_MMC_DRIVE_DELAY(0) | DW_MMC_SAMPLE_DELAY(0) | DW_MMC_DRIVE_PHASE(1) | DW_MMC_SAMPLE_PHASE(1), // SP120114 - CLKCTRL = ((1 << 16) | (1 << 24))
 //	.sdr_timing	= 0x03020001,
 //	.ddr_timing	= 0x03030002,
 	.cd_type	= DW_MCI_CD_EXTERNAL,
@@ -1783,15 +1785,9 @@ static int _dwmci2_get_cd(u32 slot_id)
 static struct dw_mci_board _dwmci2_data = {
 	.quirks		= DW_MCI_QUIRK_HIGHSPEED,
 	.bus_hz		= 100 * 1000 * 1000,
-#ifndef CONFIG_PLAT_NXP4330_VTK
-	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA 
-					| MMC_CAP_NONREMOVABLE
-			  		| MMC_CAP_POWER_OFF_CARD,
-
-#else	/* since VTK doesn't have eMMC, don't specify DDR */
-	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA,
-#endif
+	.caps		= MMC_CAP_CMD23 | MMC_CAP_4_BIT_DATA | MMC_CAP_NONREMOVABLE,
 	.detect_delay_ms= 200,
+	.clk_dly        = DW_MMC_DRIVE_DELAY(0) | DW_MMC_SAMPLE_DELAY(0) | DW_MMC_DRIVE_PHASE(1) | DW_MMC_SAMPLE_PHASE(1), // SP120114 - CLKCTRL = ((1 << 16) | (1 << 24))
 //	.sdr_timing	= 0x03020001,
 //	.ddr_timing	= 0x03030002,
 	.cd_type	= DW_MCI_CD_EXTERNAL,
