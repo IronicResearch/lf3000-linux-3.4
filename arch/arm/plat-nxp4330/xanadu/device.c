@@ -1309,9 +1309,9 @@ static int camera_set_clock(ulong clk_rate)
     printk("%s: %ld\n", __func__, clk_rate);
 
     if (clk_rate > 0)
-        nxp_soc_pwm_set_frequency(1, clk_rate, 50);
+        nxp_soc_pwm_set_frequency(0, clk_rate, 50);
     else
-        nxp_soc_pwm_set_frequency(1, 0, 0);
+        nxp_soc_pwm_set_frequency(0, 0, 0);
     msleep(1);
     return 0;
 }
@@ -1333,6 +1333,7 @@ static void vin_setup_io(int module, bool on)
 
     /* VIP0:0 = VCLK, VID0 ~ 7 */
     const u_int port[][2] = {
+#if defined(CONFIG_PLAT_NXP4330_R3K)
         /* VCLK, HSYNC, VSYNC */
         { PAD_GPIO_C + 14, NX_GPIO_PADFUNC_3 },
         { PAD_GPIO_C + 15, NX_GPIO_PADFUNC_3 },
@@ -1342,6 +1343,7 @@ static void vin_setup_io(int module, bool on)
         { PAD_GPIO_C + 19, NX_GPIO_PADFUNC_3 }, { PAD_GPIO_C + 20, NX_GPIO_PADFUNC_3 },
         { PAD_GPIO_C + 21, NX_GPIO_PADFUNC_3 }, { PAD_GPIO_C + 22, NX_GPIO_PADFUNC_3 },
         { PAD_GPIO_C + 23, NX_GPIO_PADFUNC_3 }, { PAD_GPIO_C + 24, NX_GPIO_PADFUNC_3 },
+#endif
     };
 
     pad = (u_int *)port;
@@ -1406,12 +1408,6 @@ static int mipi_phy_enable(bool en)
     return 0;
 }
 
-static struct i2c_board_info s5k4ecgx_i2c_boardinfo[] = {
-    {
-        I2C_BOARD_INFO("S5K4ECGX", 0x5A>>1),
-    },
-};
-
 struct nxp_mipi_csi_platformdata mipi_plat_data = {
     .module     = 0,
     .clk_rate   = 27000000, // 27MHz
@@ -1427,25 +1423,26 @@ struct nxp_mipi_csi_platformdata mipi_plat_data = {
 };
 #endif
 
+static struct i2c_board_info hi253_i2c_boardinfo[] = {
+    {
+        I2C_BOARD_INFO("HI253", 0x40>>1),
+    },
+};
+
 static struct nxp_v4l2_i2c_board_info sensor[] = {
     {
-        .board_info = &s5k5cagx_i2c_boardinfo[0],
-        .i2c_adapter_id = 2,
+        .board_info = &hi253_i2c_boardinfo[0],
+        .i2c_adapter_id = 1,
     },
-#if defined(CONFIG_NXP_CAPTURE_MIPI_CSI)
     {
-        .board_info = &s5k4ecgx_i2c_boardinfo[0],
-        /* lynx */
+        .board_info = &hi253_i2c_boardinfo[0],
         .i2c_adapter_id = 0,
-        /* vtk */
-        /* .i2c_adapter_id = 1, */
     },
-#endif
 };
 
 static struct nxp_capture_platformdata capture_plat_data[] = {
     {
-        .module = 0,
+        .module = 0, // VIP0
         .sensor = &sensor[0],
         .type = NXP_CAPTURE_INF_PARALLEL,
         .parallel = {
@@ -1455,15 +1452,14 @@ static struct nxp_capture_platformdata capture_plat_data[] = {
             .h_active       = 640,
             .h_frontporch   = 7,
             .h_syncwidth    = 1,
-            /* .h_backporch    = 0, */
-            .h_backporch    = 10,
+            .h_backporch    = 1,
             .v_active       = 480,
             .v_frontporch   = 0,
             .v_syncwidth    = 1,
-            .v_backporch    = 0,
+            .v_backporch    = 1,
             .clock_invert   = true,
-            .port           = 1,
-            .data_order     = NXP_VIN_CBY0CRY1,
+            .port           = 0, // VIP0 VID1
+            .data_order     = NXP_VIN_Y0CBY1CR,
             .interlace      = false,
             .clk_rate       = 24000000,
             .power_enable   = camera_power_enable,
@@ -1471,35 +1467,32 @@ static struct nxp_capture_platformdata capture_plat_data[] = {
             .setup_io       = vin_setup_io,
         },
     },
-#if defined(CONFIG_NXP_CAPTURE_MIPI_CSI)
     {
-        .module = 1,
+        .module = 1, // VIP1
         .sensor = &sensor[1],
-        .type = NXP_CAPTURE_INF_CSI,
+        .type = NXP_CAPTURE_INF_PARALLEL,
         .parallel = {
-            /* for mipi */
-            .is_mipi        = true,
-            .external_sync  = true,
+            /* for 656 */
+            .is_mipi        = false,
+            .external_sync  = false,
             .h_active       = 640,
-            .h_frontporch   = 100,
-            .h_syncwidth    = 10,
-            .h_backporch    = 100,
+            .h_frontporch   = 7,
+            .h_syncwidth    = 1,
+            .h_backporch    = 1,
             .v_active       = 480,
-            .v_frontporch   = 1,
+            .v_frontporch   = 0,
             .v_syncwidth    = 1,
             .v_backporch    = 1,
-            .clock_invert   = false,
-            .port           = NX_VIP_INPUTPORT_B,
-            .data_order     = NXP_VIN_CBY0CRY1,
+            .clock_invert   = true,
+            .port           = 0, // VIP1 VIDO
+            .data_order     = NXP_VIN_Y0CBY1CR,
             .interlace      = false,
-            .clk_rate       = 27000000,
-            .power_enable   = s5k4ecgx_power_enable,
-            .set_clock      = s5k4ecgx_set_clock,
-            .setup_io       = mipi_vin_setup_io,
+            .clk_rate       = 24000000,
+            .power_enable   = camera_power_enable2,
+            .set_clock      = camera_set_clock,
+            .setup_io       = vin_setup_io,
         },
-        .csi = &mipi_plat_data,
     },
-#endif
     { 0, NULL, 0, },
 };
 
@@ -1510,7 +1503,7 @@ static struct i2c_board_info hdmi_edid_i2c_boardinfo = {
 
 static struct nxp_v4l2_i2c_board_info edid = {
     .board_info = &hdmi_edid_i2c_boardinfo,
-    .i2c_adapter_id = 0,
+    .i2c_adapter_id = 1,
 };
 
 static struct i2c_board_info hdmi_hdcp_i2c_boardinfo = {
@@ -1519,7 +1512,7 @@ static struct i2c_board_info hdmi_hdcp_i2c_boardinfo = {
 
 static struct nxp_v4l2_i2c_board_info hdcp = {
     .board_info = &hdmi_hdcp_i2c_boardinfo,
-    .i2c_adapter_id = 0,
+    .i2c_adapter_id = 1,
 };
 
 
@@ -1547,7 +1540,7 @@ static int hdmi_read_hpd_gpio(int gpio)
 static struct nxp_out_platformdata out_plat_data = {
     .hdmi = {
         .internal_irq = 0,
-        .external_irq = PAD_GPIO_A + 19,
+//        .external_irq = PAD_GPIO_A + 19, // FIXME
         .set_int_external = hdmi_set_int_external,
         .set_int_internal = hdmi_set_int_internal,
         .read_hpd_gpio = hdmi_read_hpd_gpio,
