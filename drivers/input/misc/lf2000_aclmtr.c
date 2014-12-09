@@ -27,6 +27,7 @@
 #include <mach/platform.h>
 #include <mach/platform_id.h>
 #include <mach/gpio.h>
+#include <mach/devices.h>
 
 /*
  * device
@@ -148,6 +149,18 @@ static int bma_detect(struct lf1000_aclmtr* dev)
 
 	/* Madrid, Emerald CIP, L2K, Cabo, (Lima, Glasgow) */
 	switch (get_leapfrog_platform()) {
+	case BOGOTA:
+		bus = 1;
+		break;
+	case CABO:
+		bus = 1;
+		break;
+	case GLASGOW:
+		/* to be added when known*/
+		break;
+	case LIMA:
+		/* to be added when known */
+		break;
 	case LUCY:
 		bus = 0;
 		break;
@@ -156,15 +169,6 @@ static int bma_detect(struct lf1000_aclmtr* dev)
 		break;
 	case VALENCIA:
 		bus = 1;
-		break;
-	case CABO:
-		bus = 1;
-		break;
-	case LIMA:
-		/* to be added when known */
-		break;
-	case GLASGOW:
-		/* to be added when known*/
 		break;
 	case XANADU:
 		bus = 1;
@@ -861,7 +865,7 @@ static struct platform_driver lf1000_aclmtr_driver = {
 	.probe		= lf1000_aclmtr_probe,
 	.remove		= lf1000_aclmtr_remove,
 	.driver		= {
-		.name		= "lf2000-aclmtr",
+		.name		= DEV_NAME_LF_ACLMTR,
 	},
 };
 
