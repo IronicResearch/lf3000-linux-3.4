@@ -1349,6 +1349,23 @@ void lf3000_gpio_init(void);
 #endif /* CONFIG_GPIO_LEAPFROG */
 
 /*------------------------------------------------------------------------------
+ * Alive register platform device
+ */
+
+static struct resource alive_resource = {
+                .start  = PHY_BASEADDR_ALIVE,
+                .end    = PHY_BASEADDR_ALIVE + 0x200,
+                .flags  = IORESOURCE_MEM,
+};
+
+static struct platform_device alive_device = {
+        .name   = DEV_NAME_LF_ALIVE,
+        .id     = -1,
+        .num_resources  = 1,
+        .resource       = &alive_resource,
+};
+
+/*------------------------------------------------------------------------------
  * ADC
  * Note: LeapFrog uses another driver, as Nexell uses this board driver to sense temperature
  */
@@ -1413,6 +1430,10 @@ void __init nxp_cpu_devices_register(void)
 	printk("initialize gpio chips\n");
 	lf3000_gpio_init();
 #endif
+
+
+	printk("plat: add device alive registers\n");
+	platform_device_register(&alive_device);
 
 #if defined(CONFIG_ARM_AMBA)
 	for (i = 0; i < ARRAY_SIZE(amba_devices); i++) {

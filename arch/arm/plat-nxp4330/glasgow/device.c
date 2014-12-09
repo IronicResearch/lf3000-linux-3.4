@@ -274,7 +274,7 @@ static struct resource lf2000_nand_resource = {
 	.flags			= IORESOURCE_MEM,
 };
 static struct platform_device lf2000_nand_plat_device = {
-	.name		= DEV_NAME_NAND, /*"lf2000-nand", */
+	.name		= DEV_NAME_NAND,
 	.id		= -1,
 	.num_resources	= 1,
 	.resource	= &lf2000_nand_resource,
@@ -1886,7 +1886,7 @@ static struct platform_device tc94b26_asoc_device = {
 
 #if defined(CONFIG_SENSORS_LF3000)
 static struct platform_device power_plat_device = {
-	.name	= "lf2000-power",
+	.name	= DEV_NAME_POWER,
 	.id		= -1,
 };
 #endif
@@ -1900,7 +1900,7 @@ static struct platform_device glasgow_power_plat_device = {
 
 #if defined(CONFIG_BACKLIGHT_LF3000)
 static struct platform_device backlight_plat_device = {
-	.name	= "lf2000-bl",
+	.name	= DEV_NAME_LF_BL,
 	.id		= -1,
 };
 #endif
@@ -1946,7 +1946,7 @@ static struct platform_device lf3000_pmu_device = {
  */
 #if defined(CONFIG_INPUT_LF2000_ACLMTR)
 static struct platform_device aclmtr_plat_device = {
-	.name	= "lf2000-aclmtr",
+	.name	= DEV_NAME_LF_ACLMTR,
 	.id		= -1,
 };
 #endif
@@ -2207,7 +2207,7 @@ void __init nxp_board_devices_register(void)
 #endif
 
 #if defined(CONFIG_MTD_NAND)
-	printk("plat: add device lf2000-nand\n");
+	printk("plat: add device %s\n", DEV_NAME_LF_NAND);
 	platform_device_register(&lf2000_nand_plat_device);
 #endif
 

@@ -11,6 +11,7 @@
 #include <linux/module.h>
 
 #include <mach/nxp4330.h>
+#include <mach/devices.h>
 
 #include <nx_alive.h>
 #include <alive.h>
@@ -629,7 +630,7 @@ static struct platform_driver lf2000_alive_driver = {
         .probe  = lf2000_alive_probe,
         .remove = lf2000_alive_remove,
         .driver = {
-                .name   = "lf2000-alive",
+                .name   = DEV_NAME_LF_ALIVE,
                 .owner  = THIS_MODULE,
         },
 };

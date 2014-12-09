@@ -51,6 +51,7 @@
 #include <mach/adc.h>
 #include <mach/soc.h>
 #include <mach/bq24250-charger.h>
+#include <mach/devices.h>
 
 #ifdef CONFIG_ARCH_LF1000
 #include <mach/adc.h>
@@ -1724,7 +1725,7 @@ static struct platform_driver lf2000_power_driver = {
 	.probe      = lf2000_power_probe,
 	.remove     = lf2000_power_remove,
 	.driver     = {
-		.name	= "lf2000-power",
+		.name	= DEV_NAME_LF_POWER,
 		.owner	= THIS_MODULE,
 	},
 };

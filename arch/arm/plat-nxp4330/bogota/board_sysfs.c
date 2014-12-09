@@ -718,26 +718,25 @@ static ssize_t sysfs_show_platform(struct device *dev,
                                    struct device_attribute *attr,
                                    char* buf)
 {
-	switch(get_leapfrog_platform())
-	{
-		case LUCY:
-			return sprintf(buf, "LUCY\n");
-		case RIO:
-			return sprintf(buf, "RIO\n");
-		case VALENCIA:
-			return sprintf(buf, "VALENCIA\n");
-		case CABO:
-			return sprintf(buf, "CABO\n");
-		case LIMA:
-			return sprintf(buf, "LIMA\n");
-		case GLASGOW:
-			return sprintf(buf, "GLASGOW\n");
-		case XANADU:
-			//FIXME: set to XANADU when ready
-			return sprintf(buf, "XANADU\n");
-		case UNKNOWN:
-		default:
-			break;
+	switch (get_leapfrog_platform()) {
+	case CABO:
+		return sprintf(buf, "CABO\n");
+	case GLASGOW:
+		return sprintf(buf, "GLASGOW\n");
+	case LIMA:
+		return sprintf(buf, "LIMA\n");
+	case LUCY:
+		return sprintf(buf, "LUCY\n");
+	case RIO:
+		return sprintf(buf, "RIO\n");
+	case VALENCIA:
+		return sprintf(buf, "VALENCIA\n");
+	case BOGOTA:
+	case XANADU:
+		return sprintf(buf, "XANADU\n");
+	case UNKNOWN:
+	default:
+		break;
 	}
 	return sprintf(buf, "UNKNOWN\n");
 }
@@ -751,9 +750,10 @@ static ssize_t sysfs_show_platform_family(struct device *dev,
 	switch(get_leapfrog_platform())
 	{
 		case LUCY:
-			return sprintf(buf, "LEX\n");
-		case VALENCIA:
+			return sprintf(buf, "LEX\n");\
+		case BOGOTA:
 		case CABO:
+		case VALENCIA:
 		case XANADU:
 			return sprintf(buf, "LPAD\n");
 		case RIO:

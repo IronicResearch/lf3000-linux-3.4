@@ -71,6 +71,13 @@
 #define DEV_NAME_RFKILL         "nxp-rfkill"
 #define DEV_NAME_WDT            "nxp-wdt"
 
+#define DEV_NAME_LF_ACLMTR	"lf2000-aclmtr"	// FIXME: SEsters, make name generic
+#define DEV_NAME_LF_ALIVE	"lf2000-alive"	// FIXME: SEsters, make name generic
+#define DEV_NAME_LF_BL		"lf2000-bl"	// FIXME: SEsters, make name generic
+#define DEV_NAME_LF_NAND	"lf2000-nand"	// FIXME: SEsters, make name generic
+#define DEV_NAME_LF_POWER	"lf2000-power"	// FIXME: SEsters, make name generic
+
+
 /*
  *  Frame buffer platform data and display controller
  */
