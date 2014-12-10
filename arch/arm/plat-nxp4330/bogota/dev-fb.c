@@ -38,7 +38,7 @@ static struct nxp_fb_plat_data fb0_plat_data = {
 	.buffers		= 3,
 	.skip_pan_vsync	= 1,
 	#else
-	.buffers		= 2,
+	.buffers		= 6,
 	#endif
 	.lcd_with_mm	= CFG_DISP_PRI_LCD_WIDTH_MM,	/* 152.4 */
 	.lcd_height_mm	= CFG_DISP_PRI_LCD_HEIGHT_MM,	/* 91.44 */
