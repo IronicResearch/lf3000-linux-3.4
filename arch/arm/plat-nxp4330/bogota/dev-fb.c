@@ -139,6 +139,29 @@ static struct disp_mipi_param mipi_param = {
 #endif /* MIPI */
 
 /*------------------------------------------------------------------------------
+ * LVDS device
+ */
+#if defined (CONFIG_NEXELL_DISPLAY_LVDS)
+static struct disp_vsync_info	lvds_vsync = {
+	.h_active_len	= CFG_DISP_PRI_RESOL_WIDTH,
+	.h_sync_width	= CFG_DISP_PRI_HSYNC_SYNC_WIDTH,
+	.h_back_porch	= CFG_DISP_PRI_HSYNC_BACK_PORCH,
+	.h_front_porch	= CFG_DISP_PRI_HSYNC_FRONT_PORCH,
+	.h_sync_invert	= CFG_DISP_PRI_HSYNC_ACTIVE_HIGH,
+	.v_active_len	= CFG_DISP_PRI_RESOL_HEIGHT,
+	.v_sync_width	= CFG_DISP_PRI_VSYNC_SYNC_WIDTH,
+	.v_back_porch	= CFG_DISP_PRI_VSYNC_BACK_PORCH,
+	.v_front_porch	= CFG_DISP_PRI_VSYNC_FRONT_PORCH,
+	.v_sync_invert	= CFG_DISP_PRI_VSYNC_ACTIVE_HIGH,
+	.pixel_clock_hz	= 55000000, //CFG_DISP_PRI_PIXEL_CLOCK,
+	.clk_src_lv0	= CFG_DISP_PRI_CLKGEN0_SOURCE,
+	.clk_div_lv0	= 655/55, //CFG_DISP_PRI_CLKGEN0_DIV,
+	.clk_src_lv1	= CFG_DISP_PRI_CLKGEN1_SOURCE,
+	.clk_div_lv1	= CFG_DISP_PRI_CLKGEN1_DIV,
+};
+#endif /* LVDS */
+
+/*------------------------------------------------------------------------------
  *	platform devices
  */
 static void __init nxp_fb_device_register(void)
@@ -151,5 +174,10 @@ static void __init nxp_fb_device_register(void)
 #if defined (CONFIG_NEXELL_DISPLAY_MIPI)
 	printk("plat: add device mipi \n");
 	nxp_platform_disp_device_data(DISP_DEVICE_MIPI, NULL, (void*)mipi_param, mipi_syncgen_par);
+#endif
+
+#if defined(CONFIG_NEXELL_DISPLAY_LVDS)
+	printk("plat: add device lvds \n");
+	nxp_platform_disp_device_data(DISP_DEVICE_LVDS, &lvds_vsync, NULL, NULL);
 #endif
 };
