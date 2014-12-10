@@ -27,9 +27,9 @@
 #if defined (CONFIG_FB_NEXELL)
 #if defined (CONFIG_FB0_NEXELL)
 static struct nxp_fb_plat_data fb0_plat_data = {
-	.module			= CONFIG_FB0_NEXELL_DISPOUT,
+	.module			= CFG_FB0_NEXELL_DISPOUT,
 	.layer			= CFG_DISP_PRI_SCREEN_LAYER,
-	.format			= CFG_DISP_PRI_SCREEN_RGB_FORMAT,
+	.format			= MLC_RGBFMT_A8R8G8B8, //CFG_DISP_PRI_SCREEN_RGB_FORMAT,
 	.bgcolor		= CFG_DISP_PRI_BACK_GROUND_COLOR,
 	.bitperpixel	= CFG_DISP_PRI_SCREEN_PIXEL_BYTE * 8,
 	.x_resol		= CFG_DISP_PRI_RESOL_WIDTH,
