@@ -402,7 +402,7 @@ static ssize_t show_request(struct device *dev,
 	case (int)SCRATCH_REQUEST_PLAY:       return(sprintf(buf, "PLAY\n"));
 	case (int)SCRATCH_REQUEST_RETURN:     return(sprintf(buf, "RETURN\n"));
 	case (int)SCRATCH_REQUEST_UPDATE:     return(sprintf(buf, "UPDATE\n"));
-#ifdef CONFIG_PLAT_NXP4330_GLASGOW_ALPHA
+#ifdef CONFIG_PLAT_NXP4330_GLASGOW
 	case (int)SCRATCH_REQUEST_SLEEP:      return(sprintf(buf, "SLEEP\n"));
 #else
 	case (int)SCRATCH_REQUEST_BATTERY:    return(sprintf(buf, "BATTERY\n"));
@@ -428,7 +428,7 @@ static ssize_t set_request(struct device *dev,
 	else if (!strcasecmp(buf, "UPDATE\n"))
 		request = SCRATCH_REQUEST_UPDATE;
 
-#ifdef CONFIG_PLAT_NXP4330_GLASGOW_ALPHA
+#ifdef CONFIG_PLAT_NXP4330_GLASGOW
 	else if (!strcasecmp(buf, "SLEEP\n"))
 		request = SCRATCH_REQUEST_SLEEP;
 #else

@@ -37,6 +37,8 @@ static struct nxp_fb_plat_data fb0_plat_data = {
 	#ifdef CONFIG_ANDROID
 	.buffers		= 3,
 	.skip_pan_vsync	= 1,
+	#elif defined(CONFIG_NXP4330_LEAPFROG)
+	.buffers		= 4,
 	#else
 	.buffers		= 2,
 	#endif
