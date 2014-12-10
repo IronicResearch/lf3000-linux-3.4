@@ -73,6 +73,10 @@
 /*------------------------------------------------------------------------------
  * 	Display (DPC and MLC)
  */
+#if defined (CONFIG_FB0_NEXELL)
+#define CFG_FB0_NEXELL_DISPOUT 			0
+#endif
+
 /* Primary */
 #define CFG_DISP_PRI_SCREEN_LAYER               1
 #define CFG_DISP_PRI_SCREEN_RGB_FORMAT          MLC_RGBFMT_A8R8G8B8
@@ -80,7 +84,7 @@
 #define CFG_DISP_PRI_SCREEN_COLOR_KEY	        0x090909
 
 #define CFG_DISP_PRI_VIDEO_PRIORITY		2	// 0, 1, 2, 3
-#define CFG_DISP_PRI_BACK_GROUND_COLOR	     	0x0
+#define CFG_DISP_PRI_BACK_GROUND_COLOR	     	0x000000FF
 
 #define CFG_DISP_PRI_MLC_INTERLACE              CFALSE
 
