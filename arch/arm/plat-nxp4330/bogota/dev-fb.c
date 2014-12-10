@@ -27,11 +27,11 @@
 #if defined (CONFIG_FB_NEXELL)
 #if defined (CONFIG_FB0_NEXELL)
 static struct nxp_fb_plat_data fb0_plat_data = {
-	.module			= CONFIG_FB0_NEXELL_DISPOUT,
-	.layer			= CFG_DISP_PRI_SCREEN_LAYER,
-	.format			= CFG_DISP_PRI_SCREEN_RGB_FORMAT,
-	.bgcolor		= CFG_DISP_PRI_BACK_GROUND_COLOR,
-	.bitperpixel	= CFG_DISP_PRI_SCREEN_PIXEL_BYTE * 8,
+	.module			= 0, //CONFIG_FB0_NEXELL_DISPOUT,
+	.layer			= 0, //CFG_DISP_PRI_SCREEN_LAYER,
+	.format			= MLC_RGBFMT_A8R8G8B8, //CFG_DISP_PRI_SCREEN_RGB_FORMAT,
+	.bgcolor		= 0x000000FF,//CFG_DISP_PRI_BACK_GROUND_COLOR,
+	.bitperpixel	= 32, //CFG_DISP_PRI_SCREEN_PIXEL_BYTE * 8,
 	.x_resol		= CFG_DISP_PRI_RESOL_WIDTH,
 	.y_resol		= CFG_DISP_PRI_RESOL_HEIGHT,
 	#ifdef CONFIG_ANDROID
