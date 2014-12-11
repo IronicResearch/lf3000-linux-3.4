@@ -38,6 +38,7 @@
 #include "usb.h"
 #include "dwc_otg_cil.h"
 #include "dwc_otg_pcd_if.h"
+#include <linux/device.h>
 struct cfiobject;
 
 /**
@@ -203,6 +204,11 @@ struct dwc_otg_pcd {
 	unsigned a_alt_hnp_support:1;
 	/** Count of pending Requests */
 	unsigned request_pending;
+
+	/** dlazzari: Add logic for vbus detection as input device */
+	struct input_dev *input;
+	bool              conn_state;
+	struct timer_list conn_state_timer;
 
 	/** SETUP packet for EP0
 	 * This structure is allocated as a DMA buffer on PCD initialization
