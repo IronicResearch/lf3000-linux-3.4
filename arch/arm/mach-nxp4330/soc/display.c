@@ -34,7 +34,7 @@
 
 #include "display_4330.h"
 
-#if (1)
+#if (0)
 #define DBGOUT(msg...)		do { printk(KERN_INFO msg); } while (0)
 #else
 #define DBGOUT(msg...)		do {} while (0)

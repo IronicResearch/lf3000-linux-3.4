@@ -256,7 +256,7 @@ static int nxp_fb_dev_enable(struct nxp_fb_param *par, bool on, int force)
 	int module = par->fb_dev.device_id;
 	int stat = 0;
 
-#if defined(CONFIG_NXP4330_LEAPFROG)
+#if defined(CONFIG_NXP4330_LEAPFROG) && defined(CONFIG_PLAT_NXP4330_GLASGOW)
 	// FIXME
 	return 0;
 #endif
