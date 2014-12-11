@@ -167,6 +167,11 @@
 #define CFG_DISP_SEC_OUT_INVERT_FIELD           CFALSE
 
 /*------------------------------------------------------------------------------
+ * 	LVDS
+ */
+#define CFG_DISP_LVDS_LCD_FORMAT             	LVDS_LCDFORMAT_JEIDA
+
+/*------------------------------------------------------------------------------
  * 	PWM
  */
 #define CFG_LCD_PRI_PWM_CH						0
