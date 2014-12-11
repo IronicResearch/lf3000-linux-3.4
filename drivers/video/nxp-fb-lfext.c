@@ -254,14 +254,18 @@ static int nxp_fb_dev_enable(struct nxp_fb_param *par, bool on, int force)
 {
 #if defined CONFIG_NEXELL_DISPLAY && !defined(CONFIG_LOGO_NEXELL_COPY)
 	int module = par->fb_dev.device_id;
+	int layer  = par->fb_dev.layer;
 	int stat = 0;
 
-#if defined(CONFIG_NXP4330_LEAPFROG)
+#if defined(CONFIG_NXP4330_LEAPFROG) && defined(CONFIG_PLAT_NXP4330_GLASGOW)
 	// FIXME
 	return 0;
 #endif
 
 	if (-1 == module)
+		return 0;
+
+	if (layer != CFG_DISP_PRI_SCREEN_LAYER)
 		return 0;
 
 	if (!force)
@@ -431,7 +435,7 @@ nxp_fb_init_display(struct fb_info *info)
     #endif
 
 	nxp_fb_dev_setup(par);
-	nxp_fb_dev_enable(par, true, 0);
+	nxp_fb_dev_enable(par, true, 1);
 
 	par->status = FB_STAT_INIT;
 

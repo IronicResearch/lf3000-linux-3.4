@@ -55,6 +55,10 @@ ifeq ($(CONFIG_PLAT_NXP4330_BOGOTA),y)
 PLATBOARD :=bogota
 endif
 
+ifeq ($(CONFIG_PLAT_NXP4330_XANADU),y)
+PLATBOARD :=xanadu
+endif
+
 ifeq ($(CONFIG_PLAT_NXP4330_GLASGOW),y)
 PLATBOARD :=glasgow
 endif

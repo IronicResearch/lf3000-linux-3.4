@@ -587,6 +587,11 @@ static struct platform_device *gpio_devices[] = {
 /*------------------------------------------------------------------------------
  * Graphic OpenGL|ES platform device(vr400)
  */
+// #include <mali/mali_utgard.h>
+#ifndef MALI_GPU_NAME_UTGARD
+#define MALI_GPU_NAME_UTGARD "mali-utgard"
+#endif
+
 #define VR_MEM_SIZE_DEFAULT CFG_MEM_PHY_SYSTEM_SIZE
 #if defined( CFG_MEM_PHY_DMAZONE_SIZE )
 #define VR_MEM_SIZE 	(VR_MEM_SIZE_DEFAULT + CFG_MEM_PHY_DMAZONE_SIZE)
@@ -625,7 +630,7 @@ static struct resource vr_gpu_resources[] =
 
 static struct platform_device vr_gpu_device =
 {
-	.name = VR_GPU_NAME_UTGARD,
+	.name = MALI_GPU_NAME_UTGARD,
 	.id = 0,
 	.dev.coherent_dma_mask = DMA_BIT_MASK(32),
 

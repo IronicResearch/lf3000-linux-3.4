@@ -274,7 +274,7 @@ static struct resource lf2000_nand_resource = {
 	.flags			= IORESOURCE_MEM,
 };
 static struct platform_device lf2000_nand_plat_device = {
-	.name		= DEV_NAME_LF_NAND,
+	.name		= DEV_NAME_NAND, /*"lf2000-nand", */
 	.id		= -1,
 	.num_resources	= 1,
 	.resource	= &lf2000_nand_resource,
@@ -1408,12 +1408,6 @@ static int mipi_phy_enable(bool en)
     return 0;
 }
 
-static struct i2c_board_info s5k4ecgx_i2c_boardinfo[] = {
-    {
-        I2C_BOARD_INFO("S5K4ECGX", 0x5A>>1),
-    },
-};
-
 struct nxp_mipi_csi_platformdata mipi_plat_data = {
     .module     = 0,
     .clk_rate   = 27000000, // 27MHz
@@ -1626,12 +1620,31 @@ static int _dwmci_get_ro(u32 slot_id)
 #ifdef CONFIG_MMC_NEXELL_CH0
 static int _dwmci0_init(u32 slot_id, irq_handler_t handler, void *data)
 {
+#ifdef CONFIG_PLAT_NXP4330_VTK
+	struct dw_mci *host = (struct dw_mci *)data;
+	int io  = CFG_SDMMC0_DETECT_IO;
+	int irq = IRQ_GPIO_START + io;
+	int id  = 0, ret = 0;
+
+	printk("dw_mmc dw_mmc.%d: Using external card detect irq %3d (io %2d)\n", id, irq, io);
+
+	ret  = request_irq(irq, handler, IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				DEV_NAME_SDHC "0", (void*)host->slot[slot_id]);
+	if (0 > ret)
+		pr_err("dw_mmc dw_mmc.%d: fail request interrupt %d ...\n", id, irq);
+#endif	/* CONFIG_PLAT_NXP4330_VTK */
 	return 0;
 }
 
 static int _dwmci0_get_cd(u32 slot_id)
 {
+#ifdef CONFIG_PLAT_NXP4330_VTK
+	int io = CFG_SDMMC0_DETECT_IO;
+	int ret = nxp_soc_gpio_get_in_value(io);
+	return ret;
+#else
 	return 0;
+#endif
 }
 
 static struct dw_mci_board _dwmci0_data = {
@@ -1652,15 +1665,67 @@ static struct dw_mci_board _dwmci0_data = {
 #endif
 
 #ifdef CONFIG_MMC_NEXELL_CH1
+int glasgow_cdetect_enabled = 1;
+static int __init get_cmdline_cdetect(char *str)
+{
+  int val;
+
+  if ( get_option(&str, &val) ) {
+    glasgow_cdetect_enabled = val;
+    return 0;
+  }
+
+  return -EINVAL;
+}
+early_param("cdetect", get_cmdline_cdetect);
 
 static int _dwmci1_init(u32 slot_id, irq_handler_t handler, void *data)
 {
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+	struct dw_mci *host = (struct dw_mci *)data;
+	int io  = CFG_SDMMC0_DETECT_IO;
+	int irq = IRQ_GPIO_START + io;
+	int id  = 1, ret = 0;
+
+	/*
+	 * Check Kernel cmdline option "cdetect" [ see get_cmdline_cdetect() ]
+	 *  if option = 0, then card detect disabled -- in SD boot mode
+	 *  if option = 1, then card detect enabled  -- in eMMC boot mode
+	 */
+	switch ( glasgow_cdetect_enabled ) {
+	  case 0:
+	    printk(KERN_WARNING "dw_mmc dw_mmc.%d: External card detect DISABLED!\n", id);
+	    break;
+
+	  case 1:
+      printk(KERN_WARNING "dw_mmc dw_mmc.%d: External card detect ENABLED!\n", id);
+	    /* fall through */
+
+	  default:
+	    printk(KERN_WARNING "dw_mmc dw_mmc.%d: Using external card detect irq %3d (io %2d)\n", id, irq, io);
+      ret  = request_irq(irq, handler, IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+            DEV_NAME_SDHC "1", (void*)host->slot[slot_id]);
+      if (0 > ret)
+        pr_err("dw_mmc dw_mmc.%d: fail request interrupt %d ...\n", id, irq);
+	}
+#endif
 	return 0;
 }
 
 static int _dwmci1_get_cd(u32 slot_id)
 {
+#if defined(CONFIG_PLAT_NXP4330_GLASGOW) && !defined(CONFIG_AIO) && defined(CONFIG_MMC_NEXELL_CH0_CDETECT)
+	int io = CFG_SDMMC0_DETECT_IO;
+	int ret;
+
+	if ( !glasgow_cdetect_enabled )
+	  return 0;
+
+	ret = nxp_soc_gpio_get_in_value(io);
+  return !ret;
+#else
 	return 0;
+#endif
 }
 
 static struct dw_mci_board _dwmci1_data = {
@@ -1683,12 +1748,31 @@ static struct dw_mci_board _dwmci1_data = {
 #ifdef CONFIG_MMC_NEXELL_CH2
 static int _dwmci2_init(u32 slot_id, irq_handler_t handler, void *data)
 {
+#ifdef CONFIG_PLAT_NXP4330_VTK
+	struct dw_mci *host = (struct dw_mci *)data;
+	int io  = CFG_SDMMC0_DETECT_IO;
+	int irq = IRQ_GPIO_START + io;
+	int id  = 0, ret = 0;
+
+	printk("dw_mmc dw_mmc.%d: Using external card detect irq %3d (io %2d)\n", id, irq, io);
+
+	ret  = request_irq(irq, handler, IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				DEV_NAME_SDHC "2", (void*)host->slot[slot_id]);
+	if (0 > ret)
+		pr_err("dw_mmc dw_mmc.%d: fail request interrupt %d ...\n", id, irq);
+#endif	/* CONFIG_PLAT_NXP4330_VTK */
 	return 0;
 }
 
 static int _dwmci2_get_cd(u32 slot_id)
 {
+#ifdef CONFIG_PLAT_NXP4330_VTK
+	int io = CFG_SDMMC0_DETECT_IO;
+	int ret = nxp_soc_gpio_get_in_value(io);
+	return ret;
+#else
 	return 0;
+#endif
 }
 
 static struct dw_mci_board _dwmci2_data = {
@@ -1791,7 +1875,7 @@ static struct platform_device tc94b26_asoc_device = {
 
 #if defined(CONFIG_SENSORS_LF3000)
 static struct platform_device power_plat_device = {
-	.name	= DEV_NAME_LF_POWER,
+	.name	= "lf2000-power",
 	.id		= -1,
 };
 #endif
@@ -1805,7 +1889,7 @@ static struct platform_device glasgow_power_plat_device = {
 
 #if defined(CONFIG_BACKLIGHT_LF3000)
 static struct platform_device backlight_plat_device = {
-	.name	= DEV_NAME_LF_BL,
+	.name	= "lf2000-bl",
 	.id		= -1,
 };
 #endif
@@ -1851,7 +1935,7 @@ static struct platform_device lf3000_pmu_device = {
  */
 #if defined(CONFIG_INPUT_LF2000_ACLMTR)
 static struct platform_device aclmtr_plat_device = {
-	.name	= DEV_NAME_LF_ACLMTR,
+	.name	= "lf2000-aclmtr",
 	.id		= -1,
 };
 #endif
@@ -2112,7 +2196,7 @@ void __init nxp_board_devices_register(void)
 #endif
 
 #if defined(CONFIG_MTD_NAND)
-	printk("plat: add device %s\n", DEV_NAME_NAND);
+	printk("plat: add device lf2000-nand\n");
 	platform_device_register(&lf2000_nand_plat_device);
 #endif
 

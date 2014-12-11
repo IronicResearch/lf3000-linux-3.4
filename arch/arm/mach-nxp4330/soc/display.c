@@ -612,6 +612,13 @@ static int  disp_syncgen_prepare(struct disp_control_info *info)
 	CBOOL RGBMode = CFALSE;
 	NX_DPC_DITHER RDither, GDither, BDither;
 
+	if (clk_src_lv0 <= DPC_VCLK_SRC_PLL1) {
+		int pixel_clock = psync->pixel_clock_hz;
+		/* dynamically calculate clock divider from active PLL frequency */
+		clk_div_lv0 = nxp_cpu_clock_hz(clk_src_lv0) / pixel_clock;
+		printk("%s: pll%d @%d Hz, pixel clock @%d Hz, clk div = %d\n", __func__, clk_src_lv0, nxp_cpu_clock_hz(clk_src_lv0), pixel_clock, clk_div_lv0);
+	}
+
 	/* set delay mask */
 	if (delay_mask & DISP_SYNCGEN_DELAY_RGB_PVD)
 		rgb_pvd = psgen->d_rgb_pvd;

@@ -27,7 +27,7 @@
  * 	System Name
  */
 #define	CFG_SYS_CPU_NAME						"nxp4330q"
-#define	CFG_SYS_BOARD_NAME						"nxp4330-bogota"
+#define	CFG_SYS_BOARD_NAME						"nxp4330-xanadu"
 
 /*------------------------------------------------------------------------------
  * 	BUS config
@@ -73,26 +73,22 @@
 /*------------------------------------------------------------------------------
  * 	Display (DPC and MLC)
  */
-#if defined (CONFIG_FB0_NEXELL)
-#define CFG_FB0_NEXELL_DISPOUT 			0
-#endif
-
 /* Primary */
 #define CFG_DISP_PRI_SCREEN_LAYER               1
 #define CFG_DISP_PRI_SCREEN_RGB_FORMAT          MLC_RGBFMT_A8R8G8B8
 #define CFG_DISP_PRI_SCREEN_PIXEL_BYTE	        4
 #define CFG_DISP_PRI_SCREEN_COLOR_KEY	        0x090909
 
-#define CFG_DISP_PRI_VIDEO_PRIORITY		2	// 0, 1, 2, 3
-#define CFG_DISP_PRI_BACK_GROUND_COLOR	     	0x000000FF
+#define CFG_DISP_PRI_VIDEO_PRIORITY				2	// 0, 1, 2, 3
+#define CFG_DISP_PRI_BACK_GROUND_COLOR	     	0x0000FF
 
 #define CFG_DISP_PRI_MLC_INTERLACE              CFALSE
 
-#define	CFG_DISP_PRI_LCD_WIDTH_MM		152.4
-#define	CFG_DISP_PRI_LCD_HEIGHT_MM		91.44
+#define	CFG_DISP_PRI_LCD_WIDTH_MM				152.4
+#define	CFG_DISP_PRI_LCD_HEIGHT_MM				91.44
 
-#define CFG_DISP_PRI_RESOL_WIDTH          	1024	// X Resolution
-#define CFG_DISP_PRI_RESOL_HEIGHT		600	// Y Resolution
+#define CFG_DISP_PRI_RESOL_WIDTH          		1024	// X Resolution
+#define CFG_DISP_PRI_RESOL_HEIGHT				 600	// Y Resolution
 
 #define CFG_DISP_PRI_HSYNC_SYNC_WIDTH           2
 #define CFG_DISP_PRI_HSYNC_BACK_PORCH           160
@@ -104,19 +100,19 @@
 #define CFG_DISP_PRI_VSYNC_ACTIVE_HIGH 	        CFALSE
 
 #define CFG_DISP_PRI_CLKGEN0_SOURCE             DPC_VCLK_SRC_PLL1
-#define CFG_DISP_PRI_CLKGEN0_DIV                655/55
+#define CFG_DISP_PRI_CLKGEN0_DIV                800/55
 #define CFG_DISP_PRI_CLKGEN0_DELAY              0
-#define CFG_DISP_PRI_CLKGEN0_INVERT		0
+#define CFG_DISP_PRI_CLKGEN0_INVERT				0
 #define CFG_DISP_PRI_CLKGEN1_SOURCE             DPC_VCLK_SRC_VCLK2
 #define CFG_DISP_PRI_CLKGEN1_DIV                1
 #define CFG_DISP_PRI_CLKGEN1_DELAY              0
-#define CFG_DISP_PRI_CLKGEN1_INVERT		0
-#define CFG_DISP_PRI_CLKSEL1_SELECT		0
+#define CFG_DISP_PRI_CLKGEN1_INVERT				0
+#define CFG_DISP_PRI_CLKSEL1_SELECT				0
 #define CFG_DISP_PRI_PADCLKSEL                  DPC_PADCLKSEL_VCLK	/* VCLK=CLKGEN1, VCLK12=CLKGEN0 */
 
-#define	CFG_DISP_PRI_PIXEL_CLOCK		55000000
+#define	CFG_DISP_PRI_PIXEL_CLOCK				800000000/CFG_DISP_PRI_CLKGEN0_DIV
 
-#define	CFG_DISP_PRI_OUT_SWAPRB 		CFALSE
+#define	CFG_DISP_PRI_OUT_SWAPRB 				CFALSE
 #define CFG_DISP_PRI_OUT_FORMAT                 DPC_FORMAT_RGB888
 #define CFG_DISP_PRI_OUT_YCORDER                DPC_YCORDER_CbYCrY
 #define CFG_DISP_PRI_OUT_INTERLACE              CFALSE
@@ -125,18 +121,18 @@
 
 /* Secondary */
 #define CFG_DISP_SEC_SCREEN_LAYER               1
-#define CFG_DISP_SEC_SCREEN_RGB_FORMAT          MLC_RGBFMT_A8R8G8B8
+#define CFG_DISP_SEC_SCREEN_RGB_FORMAT          MLC_RGBFMT_R5G6B5
 #define CFG_DISP_SEC_SCREEN_PIXEL_BYTE	        2
 #define CFG_DISP_SEC_SCREEN_COLOR_KEY	        0x090909
 
-#define CFG_DISP_SEC_VIDEO_PRIORITY		2	// 0, 1, 2, 3
+#define CFG_DISP_SEC_VIDEO_PRIORITY				2	// 0, 1, 2, 3
 #define CFG_DISP_SEC_BACK_GROUND_COLOR	     	0x0
 
 #define CFG_DISP_SEC_MLC_INTERLACE              CFALSE
-#define	CFG_DISP_SEC_MLC_LOCKSIZE		8
+#define	CFG_DISP_SEC_MLC_LOCKSIZE				8
 
-#define CFG_DISP_SEC_RESOL_WIDTH          	1280	// X Resolution
-#define CFG_DISP_SEC_RESOL_HEIGHT		800	// Y Resolution
+#define CFG_DISP_SEC_RESOL_WIDTH          		1280	// X Resolution
+#define CFG_DISP_SEC_RESOL_HEIGHT				 800	// Y Resolution
 
 #define CFG_DISP_SEC_HSYNC_SYNC_WIDTH           1
 #define CFG_DISP_SEC_HSYNC_BACK_PORCH           0
@@ -154,22 +150,17 @@
 #define CFG_DISP_SEC_CLKGEN1_SOURCE             DPC_VCLK_SRC_VCLK2
 #define CFG_DISP_SEC_CLKGEN1_DIV                1
 #define CFG_DISP_SEC_CLKGEN1_DELAY              0
-#define CFG_DISP_SEC_CLKGEN1_INVERT		0
-#define CFG_DISP_SEC_CLKSEL1_SELECT		0
+#define CFG_DISP_SEC_CLKGEN1_INVERT				0
+#define CFG_DISP_SEC_CLKSEL1_SELECT				0
 #define CFG_DISP_SEC_PADCLKSEL                  DPC_PADCLKSEL_VCLK	/* VCLK=CLKGEN1, VCLK12=CLKGEN0 */
 
-#define	CFG_DISP_SEC_PIXEL_CLOCK		70000000
+#define	CFG_DISP_SEC_PIXEL_CLOCK				70000000
 
-#define	CFG_DISP_SEC_OUT_SWAPRB 		CFALSE
+#define	CFG_DISP_SEC_OUT_SWAPRB 				CFALSE
 #define CFG_DISP_SEC_OUT_FORMAT                 DPC_FORMAT_RGB666
 #define CFG_DISP_SEC_OUT_YCORDER                DPC_YCORDER_CbYCrY
 #define CFG_DISP_SEC_OUT_INTERLACE              CFALSE
 #define CFG_DISP_SEC_OUT_INVERT_FIELD           CFALSE
-
-/*------------------------------------------------------------------------------
- * 	LVDS
- */
-#define CFG_DISP_LVDS_LCD_FORMAT             	LVDS_LCDFORMAT_JEIDA
 
 /*------------------------------------------------------------------------------
  * 	PWM
