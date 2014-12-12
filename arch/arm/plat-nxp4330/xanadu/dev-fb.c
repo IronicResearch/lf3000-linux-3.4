@@ -27,10 +27,10 @@
 #if defined (CONFIG_FB_NEXELL)
 #if defined (CONFIG_FB0_NEXELL)
 static struct nxp_fb_plat_data fb0_plat_data = {
-	.module			= CFG_FB0_NEXELL_DISPOUT,
+	.module			= CONFIG_FB0_NEXELL_DISPOUT,
 	.layer			= CFG_DISP_PRI_SCREEN_LAYER,
-	.format			= MLC_RGBFMT_A8R8G8B8, //CFG_DISP_PRI_SCREEN_RGB_FORMAT,
-	.bgcolor		= CFG_DISP_PRI_BACK_GROUND_COLOR,
+	.format			= CFG_DISP_PRI_SCREEN_RGB_FORMAT,
+	.bgcolor		= 0x0000FF, //CFG_DISP_PRI_BACK_GROUND_COLOR,
 	.bitperpixel	= CFG_DISP_PRI_SCREEN_PIXEL_BYTE * 8,
 	.x_resol		= CFG_DISP_PRI_RESOL_WIDTH,
 	.y_resol		= CFG_DISP_PRI_RESOL_HEIGHT,
@@ -38,7 +38,7 @@ static struct nxp_fb_plat_data fb0_plat_data = {
 	.buffers		= 3,
 	.skip_pan_vsync	= 1,
 	#elif defined(CONFIG_NXP4330_LEAPFROG)
-	.buffers		= 6,
+	.buffers		= 4,
 	#else
 	.buffers		= 2,
 	#endif
@@ -139,29 +139,6 @@ static struct disp_mipi_param mipi_param = {
 #endif /* MIPI */
 
 /*------------------------------------------------------------------------------
- * LVDS device
- */
-#if defined (CONFIG_NEXELL_DISPLAY_LVDS)
-static struct disp_vsync_info	lvds_vsync = {
-	.h_active_len	= CFG_DISP_PRI_RESOL_WIDTH,
-	.h_sync_width	= CFG_DISP_PRI_HSYNC_SYNC_WIDTH,
-	.h_back_porch	= CFG_DISP_PRI_HSYNC_BACK_PORCH,
-	.h_front_porch	= CFG_DISP_PRI_HSYNC_FRONT_PORCH,
-	.h_sync_invert	= CFG_DISP_PRI_HSYNC_ACTIVE_HIGH,
-	.v_active_len	= CFG_DISP_PRI_RESOL_HEIGHT,
-	.v_sync_width	= CFG_DISP_PRI_VSYNC_SYNC_WIDTH,
-	.v_back_porch	= CFG_DISP_PRI_VSYNC_BACK_PORCH,
-	.v_front_porch	= CFG_DISP_PRI_VSYNC_FRONT_PORCH,
-	.v_sync_invert	= CFG_DISP_PRI_VSYNC_ACTIVE_HIGH,
-	.pixel_clock_hz	= 55000000, //CFG_DISP_PRI_PIXEL_CLOCK,
-	.clk_src_lv0	= CFG_DISP_PRI_CLKGEN0_SOURCE,
-	.clk_div_lv0	= 655/55, //CFG_DISP_PRI_CLKGEN0_DIV,
-	.clk_src_lv1	= CFG_DISP_PRI_CLKGEN1_SOURCE,
-	.clk_div_lv1	= CFG_DISP_PRI_CLKGEN1_DIV,
-};
-#endif /* LVDS */
-
-/*------------------------------------------------------------------------------
  *	platform devices
  */
 static void __init nxp_fb_device_register(void)
@@ -174,10 +151,5 @@ static void __init nxp_fb_device_register(void)
 #if defined (CONFIG_NEXELL_DISPLAY_MIPI)
 	printk("plat: add device mipi \n");
 	nxp_platform_disp_device_data(DISP_DEVICE_MIPI, NULL, (void*)mipi_param, mipi_syncgen_par);
-#endif
-
-#if defined(CONFIG_NEXELL_DISPLAY_LVDS)
-	printk("plat: add device lvds \n");
-	nxp_platform_disp_device_data(DISP_DEVICE_LVDS, &lvds_vsync, NULL, NULL);
 #endif
 };

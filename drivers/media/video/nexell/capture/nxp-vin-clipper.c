@@ -925,11 +925,23 @@ static int nxp_vin_clipper_s_power(struct v4l2_subdev *sd, int on)
         if (me->platdata->setup_io)
             me->platdata->setup_io(module, false);
         _hw_set_clock(me, true);
+#ifdef CONFIG_NXP4330_LEAPFROG	// FIXME -- relocated by Nexell to _configure()
+        /* set default param */
+        _hw_set_sensor_param(me);
+        if (me->platdata->set_clock)
+            me->platdata->set_clock(me->platdata->clk_rate);
+        if (me->platdata->power_enable)
+            me->platdata->power_enable(true);
+#endif
         ret = v4l2_subdev_call(remote_source, core, s_power, 1);
     } else {
         _disable_all(me);
         ret = v4l2_subdev_call(remote_source, core, s_power, 0);
         _hw_set_clock(me, false);
+#ifdef CONFIG_NXP4330_LEAPFROG	// FIXME -- sensor off
+        if (me->platdata->power_enable)
+            me->platdata->power_enable(false);
+#endif
     }
 
     return ret;
