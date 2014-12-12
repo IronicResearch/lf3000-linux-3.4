@@ -270,12 +270,14 @@ static ssize_t adb_read(struct file *fp, char __user *buf,
 	struct adb_dev *dev = fp->private_data;
 	struct usb_request *req;
 	int r = count, xfer;
-	int ret;
+	int maxp;
+	int ret = 0;
 
-	pr_debug("adb_read(%d)\n", count);
 	if (!_adb_dev)
 		return -ENODEV;
 
+	maxp = usb_endpoint_maxp(dev->ep_out->desc);
+	count = round_up(count, maxp);
 	if (count > ADB_BULK_BUFFER_SIZE)
 		return -EINVAL;
 
@@ -328,9 +330,9 @@ requeue_req:
 
 		pr_debug("rx %p %d\n", req, req->actual);
 		xfer = (req->actual < count) ? req->actual : count;
+		r = xfer;
 		if (copy_to_user(buf, req->buf, xfer))
 			r = -EFAULT;
-
 	} else
 		r = -EIO;
 
@@ -367,36 +369,34 @@ static ssize_t adb_write(struct file *fp, const char __user *buf,
 		ret = wait_event_interruptible(dev->write_wq,
 			(req = adb_req_get(dev, &dev->tx_idle)) || dev->error);
 
-		if (ret < 0) {
+		if (!req) {
 			r = ret;
 			break;
 		}
 
-		if (req != 0) {
-			if (count > ADB_BULK_BUFFER_SIZE)
-				xfer = ADB_BULK_BUFFER_SIZE;
-			else
-				xfer = count;
-			if (copy_from_user(req->buf, buf, xfer)) {
-				r = -EFAULT;
-				break;
-			}
-
-			req->length = xfer;
-			ret = usb_ep_queue(dev->ep_in, req, GFP_ATOMIC);
-			if (ret < 0) {
-				pr_debug("adb_write: xfer error %d\n", ret);
-				dev->error = 1;
-				r = -EIO;
-				break;
-			}
-
-			buf += xfer;
-			count -= xfer;
-
-			/* zero this so we don't try to free it on error exit */
-			req = 0;
+		if (count > ADB_BULK_BUFFER_SIZE)
+			xfer = ADB_BULK_BUFFER_SIZE;
+		else
+			xfer = count;
+		if (xfer && copy_from_user(req->buf, buf, xfer)) {
+			r = -EFAULT;
+			break;
 		}
+
+		req->length = xfer;
+		ret = usb_ep_queue(dev->ep_in, req, GFP_ATOMIC);
+		if (ret < 0) {
+			pr_debug("adb_write: xfer error %d\n", ret);
+			dev->error = 1;
+			r = -EIO;
+			break;
+		}
+
+		buf += xfer;
+		count -= xfer;
+
+		/* zero this so we don't try to free it on error exit */
+		req = 0;
 	}
 
 	if (req)
@@ -432,6 +432,10 @@ static int adb_release(struct inode *ip, struct file *fp)
 
 	adb_closed_callback();
 
+	// psw0523 add
+#ifdef CONFIG_PM
+	if (_adb_dev)
+#endif	// end psw0523
 	adb_unlock(&_adb_dev->open_excl);
 	return 0;
 }
@@ -450,9 +454,6 @@ static struct miscdevice adb_device = {
 	.name = adb_shortname,
 	.fops = &adb_fops,
 };
-
-
-
 
 static int
 adb_function_bind(struct usb_configuration *c, struct usb_function *f)
@@ -497,7 +498,6 @@ adb_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	struct adb_dev	*dev = func_to_adb(f);
 	struct usb_request *req;
 
-
 	dev->online = 0;
 	dev->error = 1;
 
@@ -518,31 +518,19 @@ static int adb_function_set_alt(struct usb_function *f,
 	DBG(cdev, "adb_function_set_alt intf: %d alt: %d\n", intf, alt);
 
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_in);
-	if (ret) {
-		dev->ep_in->desc = NULL;
-		ERROR(cdev, "config_ep_by_speed failes for ep %s, result %d\n",
-			dev->ep_in->name, ret);
+	if (ret)
 		return ret;
-	}
+
 	ret = usb_ep_enable(dev->ep_in);
-	if (ret) {
-		ERROR(cdev, "failed to enable ep %s, result %d\n",
-			dev->ep_in->name, ret);
+	if (ret)
 		return ret;
-	}
 
 	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_out);
-	if (ret) {
-		dev->ep_out->desc = NULL;
-		ERROR(cdev, "config_ep_by_speed failes for ep %s, result %d\n",
-			dev->ep_out->name, ret);
-		usb_ep_disable(dev->ep_in);
+	if (ret)
 		return ret;
-	}
+
 	ret = usb_ep_enable(dev->ep_out);
 	if (ret) {
-		ERROR(cdev, "failed to enable ep %s, result %d\n",
-			dev->ep_out->name, ret);
 		usb_ep_disable(dev->ep_in);
 		return ret;
 	}
@@ -617,6 +605,7 @@ static int adb_setup(void)
 	return 0;
 
 err:
+	_adb_dev = NULL;
 	kfree(dev);
 	printk(KERN_ERR "adb gadget driver failed to initialize\n");
 	return ret;
@@ -624,8 +613,14 @@ err:
 
 static void adb_cleanup(void)
 {
-	misc_deregister(&adb_device);
+	struct adb_dev *dev = _adb_dev;
 
-	kfree(_adb_dev);
+	printk(KERN_INFO "%s\n", __func__);
+
+	if (!dev)
+		return;
+
+	misc_deregister(&adb_device);
 	_adb_dev = NULL;
+	kfree(dev);
 }

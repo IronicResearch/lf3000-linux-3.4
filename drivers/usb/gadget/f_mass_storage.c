@@ -3168,7 +3168,7 @@ struct fsg_module_parameters {
 	_FSG_MODULE_PARAM(prefix, params, vendor_name, charp,	\
 			  "Mass Storage Vendor string");				\
 	_FSG_MODULE_PARAM(prefix, params, product_name, charp,	\
-			  "Mass Storage Product string")
+			  "Mass Storage Product string");
 
 
 static void

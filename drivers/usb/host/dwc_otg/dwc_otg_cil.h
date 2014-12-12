@@ -1000,9 +1000,7 @@ struct dwc_otg_core_if {
 	uint8_t first_in_nextep_seq;
 
 	/** Frame number while entering to ISR - needed for ISOCs **/
-	uint32_t frame_num;
-
-	uint8_t host_flag;
+	uint32_t frame_num; 
 
 };
 

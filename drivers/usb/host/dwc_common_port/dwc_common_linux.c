@@ -342,7 +342,7 @@ void DWC_DMA_POOL_FREE(dwc_pool_t *pool, void *vaddr, void *daddr)
 void *__DWC_DMA_ALLOC(void *dma_ctx, uint32_t size, dwc_dma_t *dma_addr)
 {
 #if defined(xxCOSIM) || defined(CONFIG_ARCH_NXP4330) /* Only works for 32-bit cosim */
-	void *buf = dma_alloc_coherent(dma_ctx, (size_t)size, dma_addr, GFP_KERNEL);
+	void *buf = dma_alloc_coherent(dma_ctx, (size_t)size, dma_addr, GFP_KERNEL | __GFP_NOWARN);
 #else
 	void *buf = dma_alloc_coherent(dma_ctx, (size_t)size, dma_addr, GFP_KERNEL | GFP_DMA32);
 #endif
@@ -356,7 +356,7 @@ void *__DWC_DMA_ALLOC(void *dma_ctx, uint32_t size, dwc_dma_t *dma_addr)
 
 void *__DWC_DMA_ALLOC_ATOMIC(void *dma_ctx, uint32_t size, dwc_dma_t *dma_addr)
 {
-	void *buf = dma_alloc_coherent(NULL, (size_t)size, dma_addr, GFP_ATOMIC);
+	void *buf = dma_alloc_coherent(NULL, (size_t)size, dma_addr, GFP_ATOMIC | __GFP_NOWARN);
 	if (!buf) {
 		return NULL;
 	}
@@ -586,11 +586,11 @@ void DWC_MODIFY_REG32(uint32_t volatile *reg, uint32_t clear_mask, uint32_t set_
 {
 	unsigned long flags;
 
-	local_irq_save(flags);
-	local_fiq_disable();
+//	local_irq_save(flags);
+//	local_fiq_disable();
 	writel((readl(reg) & ~clear_mask) | set_mask, reg);
-	local_fiq_enable();
-	local_irq_restore(flags);
+//	local_fiq_enable();
+//	local_irq_restore(flags);
 }
 
 #if 0
