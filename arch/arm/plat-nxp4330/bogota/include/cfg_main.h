@@ -78,8 +78,8 @@
 #endif
 
 /* Primary */
-#define CFG_DISP_PRI_SCREEN_LAYER               0
-#define CFG_DISP_PRI_SCREEN_RGB_FORMAT          MLC_RGBFMT_R5G6B5
+#define CFG_DISP_PRI_SCREEN_LAYER               1
+#define CFG_DISP_PRI_SCREEN_RGB_FORMAT          MLC_RGBFMT_A8R8G8B8
 #define CFG_DISP_PRI_SCREEN_PIXEL_BYTE	        4
 #define CFG_DISP_PRI_SCREEN_COLOR_KEY	        0x090909
 
@@ -104,7 +104,7 @@
 #define CFG_DISP_PRI_VSYNC_ACTIVE_HIGH 	        CFALSE
 
 #define CFG_DISP_PRI_CLKGEN0_SOURCE             DPC_VCLK_SRC_PLL1
-#define CFG_DISP_PRI_CLKGEN0_DIV                800/55
+#define CFG_DISP_PRI_CLKGEN0_DIV                655/55
 #define CFG_DISP_PRI_CLKGEN0_DELAY              0
 #define CFG_DISP_PRI_CLKGEN0_INVERT		0
 #define CFG_DISP_PRI_CLKGEN1_SOURCE             DPC_VCLK_SRC_VCLK2
@@ -114,7 +114,7 @@
 #define CFG_DISP_PRI_CLKSEL1_SELECT		0
 #define CFG_DISP_PRI_PADCLKSEL                  DPC_PADCLKSEL_VCLK	/* VCLK=CLKGEN1, VCLK12=CLKGEN0 */
 
-#define	CFG_DISP_PRI_PIXEL_CLOCK		800000000/CFG_DISP_PRI_CLKGEN0_DIV
+#define	CFG_DISP_PRI_PIXEL_CLOCK		55000000
 
 #define	CFG_DISP_PRI_OUT_SWAPRB 		CFALSE
 #define CFG_DISP_PRI_OUT_FORMAT                 DPC_FORMAT_RGB888
@@ -169,7 +169,7 @@
 /*------------------------------------------------------------------------------
  * 	LVDS
  */
-#define CFG_DISP_LVDS_LCD_FORMAT             	LVDS_LCDFORMAT_VESA
+#define CFG_DISP_LVDS_LCD_FORMAT             	LVDS_LCDFORMAT_JEIDA
 
 /*------------------------------------------------------------------------------
  * 	PWM
