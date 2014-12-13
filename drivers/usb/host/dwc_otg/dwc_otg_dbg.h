@@ -99,11 +99,19 @@ static inline uint32_t SET_DEBUG_LEVEL(const uint32_t new)
  * usb-DWC_otg: dwc_otg_cil_init(ca867000)
  * </code>
  */
-//#define	DEBUG
-
+// psw0523
+//#define DEBUG
 #ifdef DEBUG
 
+#if 1
+//org
 # define DWC_DEBUGPL(lvl, x...) do{ if ((lvl)&g_dbg_lvl)__DWC_DEBUG(USB_DWC x ); }while(0)
+#else
+// psw0523 fix
+#include <linux/kernel.h>
+# define DWC_DEBUGPL(lvl, x...) do{ printk(USB_DWC x ); }while(0)
+#endif
+
 # define DWC_DEBUGP(x...)	DWC_DEBUGPL(DBG_ANY, x )
 
 # define CHK_DEBUG_LEVEL(level) ((level) & g_dbg_lvl)

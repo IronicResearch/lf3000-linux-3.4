@@ -410,6 +410,18 @@ static int mtp_create_bulk_endpoints(struct mtp_dev *dev,
 	ep->driver_data = dev;		/* claim the endpoint */
 	dev->ep_out = ep;
 
+    // psw0523 fix
+#if 0
+	ep = usb_ep_autoconfig(cdev->gadget, out_desc);
+	if (!ep) {
+		DBG(cdev, "usb_ep_autoconfig for ep_out failed\n");
+		return -ENODEV;
+	}
+	DBG(cdev, "usb_ep_autoconfig for mtp ep_out got %s\n", ep->name);
+	ep->driver_data = dev;		/* claim the endpoint */
+	dev->ep_out = ep;
+#endif
+
 	ep = usb_ep_autoconfig(cdev->gadget, intr_desc);
 	if (!ep) {
 		DBG(cdev, "usb_ep_autoconfig for ep_intr failed\n");
@@ -456,10 +468,13 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 	struct usb_composite_dev *cdev = dev->cdev;
 	struct usb_request *req;
 	int r = count, xfer;
+	int maxp;
 	int ret = 0;
 
 	DBG(cdev, "mtp_read(%d)\n", count);
 
+	maxp = usb_endpoint_maxp(dev->ep_out->desc);
+	count = round_up(count, maxp);
 	if (count > MTP_BULK_BUFFER_SIZE)
 		return -EINVAL;
 
@@ -518,8 +533,8 @@ requeue_req:
 
 		DBG(cdev, "rx %p %d\n", req, req->actual);
 		xfer = (req->actual < count) ? req->actual : count;
-
-		if (copy_to_user(buf, req->buf, xfer))
+		r = xfer;
+		if (xfer && copy_to_user(buf, req->buf, xfer))
 			r = -EFAULT;
 	} else
 		r = -EIO;
@@ -593,8 +608,7 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 			xfer = MTP_BULK_BUFFER_SIZE;
 		else
 			xfer = count;
-
-		if (copy_from_user(req->buf, buf, xfer)) {
+		if (xfer && copy_from_user(req->buf, buf, xfer)) {
 			r = -EFAULT;
 			break;
 		}
@@ -790,7 +804,7 @@ static void receive_file_work(struct work_struct *data)
 			ret = wait_event_interruptible(dev->read_wq,
 				dev->rx_done || dev->state != STATE_BUSY);
 			if (dev->state == STATE_CANCELED
-					|| dev->state == STATE_OFFLINE) {
+				|| dev->state == STATE_OFFLINE) {
 				r = -ECANCELED;
 				if (!dev->rx_done)
 					usb_ep_dequeue(dev->ep_out, read_req);
@@ -957,8 +971,6 @@ out:
 
 static int mtp_open(struct inode *ip, struct file *fp)
 {
-	printk(KERN_INFO "mtp_open\n");
-
 	if (mtp_lock(&_mtp_dev->open_excl))
 		return -EBUSY;
 
@@ -972,8 +984,6 @@ static int mtp_open(struct inode *ip, struct file *fp)
 
 static int mtp_release(struct inode *ip, struct file *fp)
 {
-	printk(KERN_INFO "mtp_release\n");
-
 #ifdef CONFIG_PM
 	if (_mtp_dev)
 #endif
@@ -1180,7 +1190,13 @@ static int mtp_function_set_alt(struct usb_function *f,
 		usb_ep_disable(dev->ep_in);
 		return ret;
 	}
+
 	dev->ep_intr->desc = &mtp_intr_desc;
+
+	ret = config_ep_by_speed(cdev->gadget, f, dev->ep_intr);
+	if (ret)
+		return ret;
+
 	ret = usb_ep_enable(dev->ep_intr);
 	if (ret) {
 		usb_ep_disable(dev->ep_out);
@@ -1215,8 +1231,6 @@ static int mtp_bind_config(struct usb_configuration *c, bool ptp_config)
 {
 	struct mtp_dev *dev = _mtp_dev;
 	int ret = 0;
-
-	printk(KERN_INFO "mtp_bind_config\n");
 
 	/* allocate a string ID for our interface */
 	if (mtp_string_defs[INTERFACE_STRING_INDEX].id == 0) {
@@ -1291,8 +1305,6 @@ err1:
 static void mtp_cleanup(void)
 {
 	struct mtp_dev *dev = _mtp_dev;
-
-	printk(KERN_ERR "mtp_cleanup\n");
 
 	if (!dev)
 		return;

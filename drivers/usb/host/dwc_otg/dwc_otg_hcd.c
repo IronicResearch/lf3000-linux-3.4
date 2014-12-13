@@ -64,6 +64,81 @@ extern hcintmsk_data_t hcintmsk_saved[MAX_EPS_CHANNELS];
 extern hcint_data_t hcint_saved[MAX_EPS_CHANNELS];
 extern gintsts_data_t ginsts_saved;
 
+/* Hack-o-rama.
+ * This are functions to allow the HCD driver to post Linux input events.
+ * This is now functional, but not a clean implementation.
+ * Cleanup will require making the data and functions members of dwc_otg_hcd_t
+ */
+#include <linux/input.h>
+static struct input_dev *hcd_input = NULL;
+static int hcd_sw_data;
+
+/* Change the current state of hcd_sw_data */
+void dwc_otg_hcd_set_input_event (int data) { 
+	printk(KERN_DEBUG "***** << %s (%d) data=%d >>\n", __FUNCTION__, __LINE__, data);
+	hcd_sw_data = data; 
+}
+
+/* Post a single linux input event, SW_LID, using the current state of hcd_sw_data */
+void dwc_otg_hcd_post_input_event (void) {
+	printk(KERN_DEBUG "***** << %s (%d) data=%d >>\n", __FUNCTION__, __LINE__, hcd_sw_data);
+	if (hcd_input == NULL) {
+		DWC_ERROR("NULL hcd_input found.  No USB event logging for Brio possible now!\n");
+		return;
+	}
+	printk(KERN_DEBUG "Posting SW_LID=%d to linux input event USB\n", hcd_sw_data);
+	input_report_switch(hcd_input, SW_LID, hcd_sw_data);
+	input_sync(hcd_input);
+}
+
+/* Create LF2000 USB linux input event device */
+int dwc_otg_hcd_open_input_event (void) {
+	/* set up input device for reporting VBUS */
+	int err;
+	printk(KERN_DEBUG "***** << %s (%d) >>\n", __FUNCTION__, __LINE__);
+	hcd_input = input_allocate_device();
+	if(!hcd_input) {
+		DWC_ERROR("can't get device for vbus key hack");
+		return 1;
+	}
+	hcd_input->name = "usb-host";
+	hcd_input->phys = "lf2000/usb-host";
+	hcd_input->id.bustype = BUS_HOST;
+	hcd_input->id.vendor = 0x0001;
+	hcd_input->id.product = 0x0001;
+	hcd_input->id.version = 0x0001;
+
+	/* we only support a 'switch' event */
+	hcd_input->evbit[0] = BIT(EV_SW);
+	/* we don't offer any keys */
+	hcd_input->keycode = NULL;
+	hcd_input->keycodesize = 0;
+	hcd_input->keycodemax = 0;
+
+	/* reusing 'lid' for our switch */
+	set_bit(SW_LID, hcd_input->swbit);
+
+	err = input_register_device(hcd_input);
+	if(err) {
+		 DWC_ERROR("can't register dev for vbus key hack");
+		 return 1;
+	}
+	return 0;
+}
+
+/* Remove LF2000 USB linux input event device */
+void dwc_otg_hcd_close_input_event (void) {
+	printk(KERN_DEBUG "***** << %s (%d) >>\n", __FUNCTION__, __LINE__);
+	if (hcd_input == NULL){
+		DWC_ERROR("NULL hcd_input found.  Can't input_unregister_device!\n");
+		return;
+	}
+        input_unregister_device(hcd_input);
+	hcd_input = NULL;
+}
+
+/********/
+
 dwc_otg_hcd_t *dwc_otg_hcd_alloc_hcd(void)
 {
 	return DWC_ALLOC(sizeof(dwc_otg_hcd_t));
@@ -295,8 +370,7 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *p)
 	 */
 	dwc_otg_hcd->flags.b.port_connect_status_change = 1;
 	dwc_otg_hcd->flags.b.port_connect_status = 0;
-	if(fiq_fix_enable)
-		local_fiq_disable();
+
 	/*
 	 * Shutdown any transfers in process by clearing the Tx FIFO Empty
 	 * interrupt mask and status bits and disabling subsequent host
@@ -392,21 +466,7 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *p)
 				channel->qh = NULL;
 			}
 		}
-		if(fiq_split_enable) {
-			for(i=0; i < 128; i++) {
-				dwc_otg_hcd->hub_port[i] = 0;
-			}
-			haint_saved.d32 = 0;
-			for(i=0; i < MAX_EPS_CHANNELS; i++) {
-				hcint_saved[i].d32 = 0;
-				hcintmsk_saved[i].d32 = 0;
-			}
-		}
-
 	}
-
-	if(fiq_fix_enable)
-		local_fiq_enable();
 
 	if (dwc_otg_hcd->fops->disconnect) {
 		dwc_otg_hcd->fops->disconnect(dwc_otg_hcd);
@@ -496,6 +556,7 @@ int dwc_otg_hcd_urb_enqueue(dwc_otg_hcd_t * hcd,
 			    dwc_otg_hcd_urb_t * dwc_otg_urb, void **ep_handle,
 			    int atomic_alloc)
 {
+	dwc_irqflags_t flags;
 	int retval = 0;
 	uint8_t needs_scheduling = 0;
 	dwc_otg_transaction_type_e tr_type;
@@ -548,7 +609,7 @@ int dwc_otg_hcd_urb_enqueue(dwc_otg_hcd_t * hcd,
 		needs_scheduling = 0;
 
 	retval = dwc_otg_hcd_qtd_add(qtd, hcd, (dwc_otg_qh_t **) ep_handle, atomic_alloc);
-            // creates a new queue in ep_handle if it doesn't exist already
+	// creates a new queue in ep_handle if it doesn't exist already
 	if (retval < 0) {
 		DWC_ERROR("DWC OTG HCD URB Enqueue failed adding QTD. "
 			  "Error status %d\n", retval);
@@ -557,10 +618,12 @@ int dwc_otg_hcd_urb_enqueue(dwc_otg_hcd_t * hcd,
 	}
 
 	if(needs_scheduling) {
+//		DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
 		tr_type = dwc_otg_hcd_select_transactions(hcd);
 		if (tr_type != DWC_OTG_TRANSACTION_NONE) {
 			dwc_otg_hcd_queue_transactions(hcd, tr_type);
 		}
+//		DWC_SPINUNLOCK_IRQRESTORE(hcd->lock, flags);
 	}
 	return retval;
 }
@@ -573,7 +636,7 @@ int dwc_otg_hcd_urb_dequeue(dwc_otg_hcd_t * hcd,
 	BUG_ON(!hcd);
 	BUG_ON(!dwc_otg_urb);
 
-#ifdef DEBUG /* integrity checks (Broadcom) */
+#if 1 // def DEBUG /* integrity checks (Broadcom) */
 
 	if (hcd == NULL) {
 		DWC_ERROR("**** DWC OTG HCD URB Dequeue has NULL HCD\n");
@@ -759,8 +822,6 @@ static void completion_tasklet_func(void *ptr)
 
 		usb_hcd_giveback_urb(hcd->priv, urb, urb->status);
 
-		fiq_print(FIQDBG_PORTHUB, "COMPLETE");
-
 		DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
 	}
 	DWC_SPINUNLOCK_IRQRESTORE(hcd->lock, flags);
@@ -898,6 +959,7 @@ static void dwc_otg_hcd_free(dwc_otg_hcd_t * dwc_otg_hcd)
 		}
 	} else if (dwc_otg_hcd->status_buf != NULL) {
 		DWC_FREE(dwc_otg_hcd->status_buf);
+		dwc_otg_hcd->status_buf = NULL;
 	}
 	DWC_SPINLOCK_FREE(dwc_otg_hcd->channel_lock);
 	DWC_SPINLOCK_FREE(dwc_otg_hcd->lock);
@@ -915,6 +977,7 @@ static void dwc_otg_hcd_free(dwc_otg_hcd_t * dwc_otg_hcd)
 	}
 #endif
 	DWC_FREE(dwc_otg_hcd);
+	dwc_otg_hcd = NULL;
 }
 
 int init_hcd_usecs(dwc_otg_hcd_t *_hcd);
@@ -928,11 +991,14 @@ int dwc_otg_hcd_init(dwc_otg_hcd_t * hcd, dwc_otg_core_if_t * core_if)
 
 	hcd->lock = DWC_SPINLOCK_ALLOC();
 	hcd->channel_lock = DWC_SPINLOCK_ALLOC();
-        DWC_DEBUGPL(DBG_HCDV, "init of HCD %p given core_if %p\n",
-                    hcd, core_if);
+
+	DWC_DEBUGPL(DBG_HCDV, "init of HCD %p given core_if %p\n",
+			hcd, core_if);
+
 	if (!hcd->lock) {
 		DWC_ERROR("Could not allocate lock for pcd");
 		DWC_FREE(hcd);
+		hcd = NULL;
 		retval = -DWC_E_NO_MEMORY;
 		goto out;
 	}
@@ -1020,16 +1086,19 @@ int dwc_otg_hcd_init(dwc_otg_hcd_t * hcd, dwc_otg_core_if_t * core_if)
 		goto out;
 	}
 
+	if (dwc_otg_hcd_open_input_event ()) { /* !0 -> error */
+		retval = -DWC_E_NO_DEVICE;
+		DWC_ERROR("%s: Can't open input event stream\n", __func__);
+		dwc_otg_hcd_free(hcd);
+		goto out;
+	}
+
 	hcd->otg_port = 1;
 	hcd->frame_list = NULL;
 	hcd->frame_list_dma = 0;
 	hcd->periodic_qh_count = 0;
 
 	DWC_MEMSET(hcd->hub_port, 0, sizeof(hcd->hub_port));
-#ifdef FIQ_DEBUG
-	DWC_MEMSET(hcd->hub_port_alloc, -1, sizeof(hcd->hub_port_alloc));
-#endif
-
 out:
 	return retval;
 }
@@ -1038,6 +1107,8 @@ void dwc_otg_hcd_remove(dwc_otg_hcd_t * hcd)
 {
 	/* Turn off all host-specific interrupts. */
 	dwc_otg_disable_host_interrupts(hcd->core_if);
+
+	dwc_otg_hcd_close_input_event ();
 
 	dwc_otg_hcd_free(hcd);
 }
@@ -1101,6 +1172,12 @@ static void assign_and_init_hc(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
 	dwc_otg_hcd_urb_t *urb;
 	void* ptr = NULL;
 
+#ifdef CONFIG_NXP4330_LEAPFROG
+	if (DWC_CIRCLEQ_EMPTY(&qh->qtd_list)) {
+		printk(KERN_CRIT "%s(): QH list of QTDs is empty; just return\n", __func__);
+		return;
+	}
+#endif
 	qtd = DWC_CIRCLEQ_FIRST(&qh->qtd_list);
 	
 	urb = qtd->urb;
@@ -1175,12 +1252,7 @@ static void assign_and_init_hc(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
 		uint32_t hub_addr, port_addr;
 		hc->do_split = 1;
 		hc->xact_pos = qtd->isoc_split_pos;
-		/* We don't need to do complete splits anymore */
-		if(fiq_split_enable)
-			hc->complete_split = qtd->complete_split = 0;
-		else
-			hc->complete_split = qtd->complete_split;
-
+		hc->complete_split = qtd->complete_split;
 		hcd->fops->hub_info(hcd, urb->priv, &hub_addr, &port_addr);
 		hc->hub_addr = (uint8_t) hub_addr;
 		hc->port_addr = (uint8_t) port_addr;
@@ -1261,6 +1333,9 @@ static void assign_and_init_hc(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
 			}
 			hc->xfer_buff +=
 			    frame_desc->offset + qtd->isoc_split_offset;
+            // psw0523 debugging
+            //printk("xfer_buff: 0x%x\n", hc->xfer_buff);
+            // end psw0523
 			hc->xfer_len =
 			    frame_desc->length - qtd->isoc_split_offset;
 
@@ -1511,7 +1586,7 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t * hcd)
 				hcd->available_host_channels--;
 				DWC_SPINUNLOCK_IRQRESTORE(channel_lock, flags);
 #ifdef DEBUG_HOST_CHANNELS
-				last_sel_trans_num_nonper_scheduled++;
+			last_sel_trans_num_nonper_scheduled++;
 #endif /* DEBUG_HOST_CHANNELS */
 		}
 
@@ -1656,15 +1731,6 @@ static void process_periodic_channels(dwc_otg_hcd_t * hcd)
 
 		qh = DWC_LIST_ENTRY(qh_ptr, dwc_otg_qh_t, qh_list_entry);
 
-		// Do not send a split start transaction any later than frame .6
-		// Note, we have to schedule a periodic in .5 to make it go in .6
-		if(fiq_split_enable && qh->do_split && ((dwc_otg_hcd_get_frame_number(hcd) + 1) & 7) > 6)
-		{
-			qh_ptr = qh_ptr->next;
-			g_next_sched_frame = dwc_otg_hcd_get_frame_number(hcd) | 7;
-			continue;
-		}
-
 		/*
 		 * Set a flag if we're queuing high-bandwidth in slave mode.
 		 * The flag prevents any halts to get into the request queue in
@@ -1794,15 +1860,6 @@ static void process_non_periodic_channels(dwc_otg_hcd_t * hcd)
 
 		qh = DWC_LIST_ENTRY(hcd->non_periodic_qh_ptr, dwc_otg_qh_t,
 				    qh_list_entry);
-
-		// Do not send a split start transaction any later than frame .5
-		// non periodic transactions will start immediately in this uframe
-		if(fiq_split_enable && qh->do_split && ((dwc_otg_hcd_get_frame_number(hcd) + 1) & 7) > 6)
-		{
-			g_next_sched_frame = dwc_otg_hcd_get_frame_number(hcd) | 7;
-			break;
-		}
-
 		status =
 		    queue_transaction(hcd, qh->channel,
 				      tx_status.b.nptxfspcavail);
@@ -2452,6 +2509,7 @@ int dwc_otg_hcd_hub_control(dwc_otg_hcd_t * dwc_otg_hcd,
 			/* Port inidicator not supported */
 			break;
 		case UHF_C_PORT_CONNECTION:
+			dwc_otg_hcd_set_input_event (0); /* Disconnect by default */
 			/* Clears drivers internal connect status change
 			 * flag */
 			DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD HUB CONTROL - "
@@ -2466,6 +2524,8 @@ int dwc_otg_hcd_hub_control(dwc_otg_hcd_t * dwc_otg_hcd,
 			dwc_otg_hcd->flags.b.port_reset_change = 0;
 			break;
 		case UHF_C_PORT_ENABLE:
+			printk(KERN_DEBUG "***** CPF << %s (%d) >>\n", __FUNCTION__, __LINE__);
+			dwc_otg_hcd_post_input_event ();  /* Post what we detected: connect or disconnect */
 			/* Clears the driver's internal Port
 			 * Enable/Disable Change flag */
 			DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD HUB CONTROL - "
@@ -2788,7 +2848,7 @@ int dwc_otg_hcd_hub_control(dwc_otg_hcd_t * dwc_otg_hcd,
 			if (dwc_otg_hcd->fops->get_b_hnp_enable(dwc_otg_hcd)) {
 				pcgcctl_data_t pcgcctl = {.d32 = 0 };
 				pcgcctl.b.stoppclk = 1;
-                DWC_MODIFY_REG32(core_if->pcgcctl, pcgcctl.d32, 0);
+				DWC_MODIFY_REG32(core_if->pcgcctl, pcgcctl.d32, 0);
 				dwc_mdelay(200);
 			}
 
@@ -2877,12 +2937,18 @@ int dwc_otg_hcd_hub_control(dwc_otg_hcd_t * dwc_otg_hcd,
 					DWC_PRINTF("Indeed it is in host mode hprt0 = %08x\n",hprt0.d32);
 					DWC_WRITE_REG32(core_if->host_if->hprt0,
 							hprt0.d32);
+					printk (KERN_DEBUG "*** We think we are detecting a new host-mode attachment.  Post 1 at clear UFC_C_PORT_ENABLE\n");
+					dwc_otg_hcd_set_input_event (1); /* Decide that we connected instead */
 				}
 				/* Clear reset bit in 10ms (FS/LS) or 50ms (HS) */
 				dwc_mdelay(60);
 				hprt0.b.prtrst = 0;
 				DWC_WRITE_REG32(core_if->host_if->hprt0, hprt0.d32);
 				core_if->lx_state = DWC_OTG_L0;	/* Now back to the on state */
+
+                // psw0523 debugging
+                //hprt0.d32 = dwc_otg_read_hprt0(core_if);
+                //printk("%s: hprt0 0x%x\n", __func__, hprt0.d32);
 			}
 			break;
 #ifdef DWC_HS_ELECT_TST
@@ -3328,13 +3394,18 @@ dwc_otg_hcd_urb_t *dwc_otg_hcd_urb_alloc(dwc_otg_hcd_t * hcd,
 	else
 		dwc_otg_urb = DWC_ALLOC(size);
 
-        if (dwc_otg_urb)
-		dwc_otg_urb->packet_count = iso_desc_count;
-        else {
-		DWC_ERROR("**** DWC OTG HCD URB alloc - "
-			"%salloc of %db failed\n",
-			atomic_alloc?"atomic ":"", size);
-	}
+    if (NULL != dwc_otg_urb)
+        dwc_otg_urb->packet_count = iso_desc_count;
+    else {
+        // psw0523 fix
+        //dwc_otg_urb->packet_count = 0;
+        if (size != 0) {
+            DWC_ERROR("**** DWC OTG HCD URB alloc - "
+                    "%salloc of %db failed\n",
+                    atomic_alloc?"atomic ":"", size);
+        }
+    }
+
 	return dwc_otg_urb;
 }
 
