@@ -476,6 +476,7 @@ static int cfi_ep_init_defaults(struct dwc_otg_pcd *pcd, cfi_ep_t * cfiep)
 		CFI_INFO
 		    ("Failed to allocate memory for CONCATENATION feature value\n");
 		DWC_FREE(cfiep->bm_sg);
+		cfiep->bm_sg = NULL;
 		return -DWC_E_NO_MEMORY;
 	}
 	dwc_memset(cfiep->bm_concat, 0, sizeof(ddma_concat_buffer_setup_t));
@@ -485,7 +486,9 @@ static int cfi_ep_init_defaults(struct dwc_otg_pcd *pcd, cfi_ep_t * cfiep)
 		CFI_INFO
 		    ("Failed to allocate memory for Alignment feature value\n");
 		DWC_FREE(cfiep->bm_sg);
+		cfiep->bm_sg = NULL;
 		DWC_FREE(cfiep->bm_concat);
+		cfiep->bm_concat = NULL;
 		return -DWC_E_NO_MEMORY;
 	}
 	dwc_memset(cfiep->bm_align, 0, sizeof(ddma_align_buffer_setup_t));
@@ -1353,6 +1356,7 @@ static int cfi_ep_set_concat_val(uint8_t * buf, struct dwc_otg_pcd *pcd)
 	/* Free the previously allocated storage for the wTxBytes */
 	if (ep->bm_concat->wTxBytes) {
 		DWC_FREE(ep->bm_concat->wTxBytes);
+		ep->bm_concat->wTxBytes = NULL;
 	}
 
 	/* Allocate a new storage for the wTxBytes field */

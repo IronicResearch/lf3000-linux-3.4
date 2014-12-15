@@ -578,9 +578,6 @@ struct dwc_otg_hcd {
 
 	/** Hub - Port assignment */
 	int hub_port[128];
-#ifdef FIQ_DEBUG
-	int hub_port_alloc[2048];
-#endif
 
 	/** Frame List DMA address */
 	dma_addr_t frame_list_dma;
@@ -602,6 +599,11 @@ struct dwc_otg_hcd {
 	uint64_t hfnum_0_frrem_accum_b;
 	uint32_t hfnum_other_samples_b;
 	uint64_t hfnum_other_frrem_accum_b;
+#endif
+
+    // psw0523 add for pm
+#ifdef CONFIG_PM
+    struct notifier_block pm_notify;
 #endif
 };
 
@@ -697,6 +699,7 @@ static inline dwc_otg_qtd_t *dwc_otg_hcd_qtd_alloc(int atomic_alloc)
 static inline void dwc_otg_hcd_qtd_free(dwc_otg_qtd_t * qtd)
 {
 	DWC_FREE(qtd);
+	qtd = NULL;
 }
 
 /** Removes a QTD from list.

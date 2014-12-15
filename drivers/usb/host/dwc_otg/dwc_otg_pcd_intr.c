@@ -42,13 +42,11 @@
 extern void complete_xiso_ep(dwc_otg_pcd_ep_t * ep);
 #endif
 
+#define USE_JHKIM		(1)
+
 //#define PRINT_CFI_DMA_DESCS
 
 //#define DEBUG_EP0
-
-#ifdef CFG_USE_FREE_LIST
-extern void add_free_list(dwc_otg_pcd_ep_t *ep, uint8_t *buf, dwc_dma_t dma, uint32_t length);
-#endif
 
 /**
  * This function updates OTG.
@@ -747,6 +745,8 @@ int32_t dwc_otg_pcd_handle_early_suspend_intr(dwc_otg_pcd_t * pcd)
 	gintsts.b.erlysuspend = 1;
 	DWC_WRITE_REG32(&GET_CORE_IF(pcd)->core_global_regs->gintsts,
 			gintsts.d32);
+	pcd->conn_state = false;
+	mod_timer( &(pcd->conn_state_timer), jiffies + msecs_to_jiffies(100) );
 	return 1;
 }
 
@@ -889,6 +889,7 @@ int32_t dwc_otg_pcd_handle_usb_reset_intr(dwc_otg_pcd_t * pcd)
 
 	power.d32 = DWC_READ_REG32(core_if->pcgcctl);
 	if (power.b.stoppclk) {
+#if 0
 		power.d32 = 0;
 		power.b.stoppclk = 1;
 		DWC_MODIFY_REG32(core_if->pcgcctl, power.d32, 0);
@@ -898,11 +899,25 @@ int32_t dwc_otg_pcd_handle_usb_reset_intr(dwc_otg_pcd_t * pcd)
 
 		power.b.rstpdwnmodule = 1;
 		DWC_MODIFY_REG32(core_if->pcgcctl, power.d32, 0);
+#else
+
+		power.b.pwrclmp = 1;
+		DWC_WRITE_REG32(core_if->pcgcctl, power.d32);
+	
+		power.b.rstpdwnmodule = 1;
+		DWC_MODIFY_REG32(core_if->pcgcctl, 0, power.d32);
+	
+		power.b.stoppclk = 1;
+		DWC_MODIFY_REG32(core_if->pcgcctl, 0, power.d32);
+#endif
 	}
 
 	core_if->lx_state = DWC_OTG_L0;
 
 	DWC_PRINTF("USB RESET\n");
+#ifdef CONFIG_PLAT_NXP4330_GLASGOW_ALPHA
+	mod_timer( &(pcd->conn_state_timer), jiffies + msecs_to_jiffies(100) );
+#endif
 #ifdef DWC_EN_ISOC
 	for (i = 1; i < 16; ++i) {
 		dwc_otg_pcd_ep_t *ep;
@@ -931,8 +946,10 @@ int32_t dwc_otg_pcd_handle_usb_reset_intr(dwc_otg_pcd_t * pcd)
 	/* Flush the NP Tx FIFO */
 	dwc_otg_flush_tx_fifo(core_if, 0x10);
 
+#if 1	/* 20may14 */
 	/* flush RX fifo */
 	dwc_otg_flush_rx_fifo(core_if);
+#endif	/* 20may14 */
 
 	/* Flush the Learning Queue */
 	resetctl.b.intknqflsh = 1;
@@ -1181,6 +1198,10 @@ int32_t dwc_otg_pcd_handle_enum_done_intr(dwc_otg_pcd_t * pcd)
 	}
 	DWC_WRITE_REG32(&global_regs->gusbcfg, gusbcfg.d32);
 
+	/* Set a debounce timer for connection state */
+	pcd->conn_state = true;
+	mod_timer( &(pcd->conn_state_timer), jiffies + msecs_to_jiffies(100) );
+
 	/* Clear interrupt */
 	gintsts.d32 = 0;
 	gintsts.b.enumdone = 1;
@@ -1349,8 +1370,38 @@ static inline void do_gadget_setup(dwc_otg_pcd_t * pcd,
 	ret = pcd->fops->setup(pcd, (uint8_t *) ctrl);
 	DWC_SPINLOCK(pcd->lock);
 	if (ret < 0) {
+// leapfrog
+#if 1
+		/* if this looks like a GetDeviceDescriptor request and it failed,
+		 * then soft_disconnect in order to suppress USB device not recognized.
+		 * Otherwise stall.
+		 */
+		uint8_t * p;
+	
+		p = (uint8_t *)ctrl;
+		if (   (*p == 0x80)
+			&& (*(p+1) == 0x06)
+			&& (*(p+2) == 0x00)
+			&& (*(p+3) == 0x01) )
+		{
+			dwc_otg_pcd_soft_disconnect(pcd);
+		}
+		else {
+			ep0_do_stall(pcd, ret);
+			printk(KERN_INFO "pcd->fops->setup() returned %d\n", ret);
+			printk(KERN_INFO "    ctrl: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			*((uint8_t *)ctrl), 
+			*((uint8_t *)ctrl+1), 
+			*((uint8_t *)ctrl+2), 
+			*((uint8_t *)ctrl+3), 
+			*((uint8_t *)ctrl+4), 
+			*((uint8_t *)ctrl+5), 
+			*((uint8_t *)ctrl+6), 
+			*((uint8_t *)ctrl+7)); 
+		}
+#else
 		ep0_do_stall(pcd, ret);
-		pcd->fops->disconnect(pcd);
+#endif
 	}
 
 	/** @todo This is a g_file_storage gadget driver specific
@@ -1775,10 +1826,10 @@ static inline void do_set_address(dwc_otg_pcd_t * pcd)
 	if (ctrl.bmRequestType == UT_DEVICE) {
 		dcfg_data_t dcfg = {.d32 = 0 };
 
-#ifdef DEBUG_EP0
-//                      DWC_DEBUGPL(DBG_PCDV, "SET_ADDRESS:%d\n", ctrl.wValue);
-#endif
 		dcfg.b.devaddr = UGETW(ctrl.wValue);
+#ifdef DEBUG_EP0
+//		DWC_DEBUGPL(DBG_PCDV, "SET_ADDRESS:%d\n", dcfg.b.devaddr);
+#endif
 		DWC_MODIFY_REG32(&dev_if->dev_global_regs->dcfg, 0, dcfg.d32);
 		do_setup_in_status_phase(pcd);
 	}
@@ -2290,10 +2341,10 @@ static void complete_ep(dwc_otg_pcd_ep_t * ep)
 				} else {
 #endif
 					for (i = 0; i < ep->dwc_ep.desc_cnt; ++i) {
-						desc_sts = dma_desc->status;
-						byte_count += desc_sts.b.bytes;
-						dma_desc++;
-					}
+					desc_sts = dma_desc->status;
+					byte_count += desc_sts.b.bytes;
+					dma_desc++;
+				}
 #ifdef DWC_UTE_CFI
 				}
 #endif
@@ -2511,18 +2562,22 @@ static void complete_ep(dwc_otg_pcd_ep_t * ep)
 		if (req->dw_align_buf) {
 			if (!ep->dwc_ep.is_in) {
 				dwc_memcpy(req->buf, req->dw_align_buf, req->length);
+
+//--> kook - [20130909] fixed on 4330
+#if 0 //defined(CONFIG_CACHE_L2X0) && defined(CONFIG_ARCH_NXP4330)
+				if (ep->ep_buf_info[ep->dwc_ep.num].dw_align_buf != NULL)
+					req->dw_align_buf = NULL;
+#endif
+//<-- kook - [20130909] fixed on 4330
 			}
 			DWC_DEBUGPL(DBG_PCD, "%s: DWC_DMA_FREE (req %p) %p:%d dma %x (align %p:%x)\n",
 				__func__, req, req->buf, req->length, req->dma,
 				req->dw_align_buf, req->dw_align_buf_dma);
 
-#ifdef CFG_USE_FREE_LIST
-			add_free_list(ep, req->dw_align_buf, req->dw_align_buf_dma, req->length);
-#else
+#if (USE_JHKIM == 1)
 			DWC_DMA_FREE(req->length, req->dw_align_buf,
 					req->dw_align_buf_dma);
 #endif
-			req->dw_align_buf = NULL;
 		}
 
 		dwc_otg_request_done(ep, req, 0);
@@ -3681,7 +3736,7 @@ static inline void handle_in_ep_disable_intr(dwc_otg_pcd_t * pcd,
 				i = core_if->nextep_seq[i];
 			} while (i != core_if->first_in_nextep_seq);
 		} else { // dma_desc_enable
-			DWC_PRINTF("%s Learning Queue not supported in DDMA\n", __func__);
+				DWC_PRINTF("%s Learning Queue not supported in DDMA\n", __func__);
 		}
 
 		/* Restart transfers in predicted sequences */
@@ -4899,7 +4954,7 @@ int32_t dwc_otg_pcd_handle_incomplete_isoc_out_intr(dwc_otg_pcd_t * pcd)
 		/* Unmask it */
 		intr_mask.b.goutnakeff = 1;
 		DWC_WRITE_REG32(&core_if->core_global_regs->gintmsk, intr_mask.d32);
-	}
+ 	}
 	if (!gintsts.b.goutnakeff) {
 		dctl.b.sgoutnak = 1;
 	}
@@ -5068,10 +5123,6 @@ int32_t dwc_otg_pcd_handle_intr(dwc_otg_pcd_t * pcd)
 
 	/* Exit from ISR if core is hibernated */
 	if (core_if->hibernation_suspend == 1) {
-		return retval;
-	}
-
-	if (core_if->op_state == A_HOST) {
 		return retval;
 	}
 

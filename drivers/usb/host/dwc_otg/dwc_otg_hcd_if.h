@@ -36,6 +36,16 @@
 
 #include "dwc_otg_core_if.h"
 
+// psw0523 add
+#ifdef CONFIG_PM
+#include <linux/sched.h>
+#endif
+
+#ifdef CONFIG_PLAT_NXP4330_GLASGOW_ALPHA
+#include <linux/gpio.h>
+#include <linux/lf3000/gpio.h>
+#endif
+
 /** @file
  * This file defines DWC_OTG HCD Core API.
  */
@@ -116,7 +126,8 @@ extern int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * dwc_otg_hcd);
 /** This function is used to handle the fast interrupt
  *
  */
-extern void __attribute__ ((naked)) dwc_otg_hcd_handle_fiq(void);
+// psw0523 fix
+//extern void __attribute__ ((naked)) dwc_otg_hcd_handle_fiq(void);
 
 /**
  * Returns private data set by
