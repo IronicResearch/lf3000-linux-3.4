@@ -99,7 +99,7 @@ static struct gpio_keys_button lf3000_buttons[] = {
 	},
 	{
 		.type	= EV_KEY,
-		.code	= KEY_M,
+		.code	= KEY_ESC,
 		.gpio	= BUTTON_HOME,
 		.desc	= "Home Button",
 		.active_low	= 1,
