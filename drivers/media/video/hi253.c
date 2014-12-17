@@ -610,8 +610,8 @@ static int hi253_initialize_ctrls(struct hi253_state *state)
         pr_err("%s: failed to create color_effect ctrl\n", __func__);
         return -1;
     }
-    state->exposure = v4l2_ctrl_new_std(&state->handler, &hi253_ctrl_ops,
-            V4L2_CID_EXPOSURE, MIN_EXPOSURE, MAX_EXPOSURE, 1, 0);
+    state->exposure = v4l2_ctrl_new_std_menu(&state->handler, &hi253_ctrl_ops,
+            V4L2_CID_EXPOSURE, MAX_EXPOSURE, 1, 0);
     if (!state->exposure) {
         pr_err("%s: failed to create exposure ctrl\n", __func__);
         return -1;

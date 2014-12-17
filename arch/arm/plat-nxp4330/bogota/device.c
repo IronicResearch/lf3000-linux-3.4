@@ -1357,12 +1357,13 @@ static void vin_setup_io(int module, bool on)
     }
 }
 
-
+#ifdef CONFIG_VIDEO_S5K5CAGX
 static struct i2c_board_info s5k5cagx_i2c_boardinfo[] = {
     {
         I2C_BOARD_INFO("S5K5CAGX", 0x78>>1),
     },
 };
+#endif
 
 #if defined(CONFIG_NXP_CAPTURE_MIPI_CSI)
 
@@ -1502,6 +1503,7 @@ static struct nxp_capture_platformdata capture_plat_data[] = {
     { 0, NULL, 0, },
 };
 
+#ifdef CONFIG_NXP_OUT_HDMI
 /* out platformdata */
 static struct i2c_board_info hdmi_edid_i2c_boardinfo = {
     I2C_BOARD_INFO("nxp_edid", 0xA0>>1),
@@ -1554,10 +1556,13 @@ static struct nxp_out_platformdata out_plat_data = {
         .hdcp = &hdcp,
     },
 };
+#endif
 
 static struct nxp_v4l2_platformdata v4l2_plat_data = {
     .captures = &capture_plat_data[0],
+#ifdef CONFIG_NXP_OUT_HDMI
     .out = &out_plat_data,
+#endif
 };
 
 static struct platform_device nxp_v4l2_dev = {
