@@ -1,0 +1,8 @@
+.cproject
+.project
+.settings/
+*.o
+*.cmd
+*.order
+*.builtin
+*.ko
