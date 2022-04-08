@@ -106,8 +106,8 @@
 // #include "ctouch.h"
 //or
 //#include <mach/ctouch.h>
-//#include <plat/pap11xx_touch.h>	// should ptr to the same folder as above but non-exist
-#include <mach/pap11xx_touch.h>
+#include <plat/pap11xx_touch.h>	// should ptr to the same folder as above but non-exist
+//#include <mach/pap11xx_touch.h>
 // #include "pap11xx_touch.h" // this is also used in device.c
 #include "pap11xx_ts.h"
 #include "pap1110_fw.h"
@@ -1361,7 +1361,7 @@ static void pap11xx_finger_status_update(struct touch_report *report,
 
 	int i = 0, id;
 
-	/* clear current finger sttus */
+	/* clear current finger status */
 	for (i = 0; i < PAP11XX_ID_MAX; i++)
 		finger_status[i] = FINGER_NO_TOUCH;
 
@@ -1382,9 +1382,13 @@ static void pap11xx_finger_status_update(struct touch_report *report,
 		else {
 			/* release a touch */
 			finger_status[i] = FINGER_TOUCH_TO_RELEASE;
-			input_mt_slot(input_dev, i);
-			input_mt_report_slot_state(input_dev, MT_TOOL_FINGER, 0);
-		}
+      // multi-touch
+      input_mt_slot(input_dev, i);
+      input_mt_report_slot_state(input_dev, MT_TOOL_FINGER, 0);
+      input_report_abs(input_dev, ABS_MT_PRESSURE, 0);
+      // single touch
+      input_mt_report_pointer_emulation(input_dev, 0);
+	  }
 	}
 
 	/* save finger status */
@@ -1466,48 +1470,32 @@ static void pap11xx_work_func(struct work_struct *irq_work)
 		pap11xx_show_report(&touch_report, status);
 
 		pap11xx_finger_status_update(&touch_report, ts);
+
+    //printk( MODULE_NAME "total touch: %d\n", touch_report.total_touch );
+		//input_mt_report_finger_count(input_dev, touch_report.total_touch);
+
 		if (touch_report.total_touch) {
-			// printk("\nSZ: total touch: %d ", touch_report.total_touch );
 			for (i = 0; i < touch_report.total_touch; i++) {
 				id = touch_report.point_data[i].id;
 				switch (finger_status[id]) {
 				case FINGER_RELEASE_TO_TOUCH:
 				case FINGER_TOUCH_TO_TOUCH:
+          // multi-touch
 					input_mt_slot(input_dev, id);
 					input_mt_report_slot_state(input_dev, MT_TOOL_FINGER, 1);
-					input_report_abs(ts->input, ABS_MT_POSITION_X,
-						touch_report.point_data[i].x);
-					input_report_abs(ts->input, ABS_MT_POSITION_Y,
-						touch_report.point_data[i].y);
-					input_report_abs(ts->input, ABS_MT_PRESSURE,
-						touch_report.point_data[i].force / pressure_scale | 0x01);
-					input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR,
-						touch_report.point_data[i].area);
-
-					input_report_abs(ts->input, ABS_X,
-						touch_report.point_data[i].x);
-					input_report_abs(ts->input, ABS_Y,
-						touch_report.point_data[i].y);
-					if (report_pressure == 0) {
-						input_report_abs(ts->input, ABS_PRESSURE,
-							(touch_report.point_data[i].force / pressure_scale) | 0x01);
-						// printk("pressure %d: %d  ", i, touch_report.point_data[i].force / pressure_scale);
-					} else {
-						input_report_abs(ts->input, ABS_PRESSURE, report_pressure);
-						// printk("pressure %d: %d  ", i, report_pressure );
-					}
+          input_report_abs(input_dev, ABS_MT_TOUCH_MAJOR, touch_report.point_data[i].area);
+					input_report_abs(input_dev, ABS_MT_POSITION_X, touch_report.point_data[i].x);
+					input_report_abs(input_dev, ABS_MT_POSITION_Y, touch_report.point_data[i].y);
+					if (report_pressure == 0)
+					  input_report_abs(input_dev, ABS_MT_PRESSURE,
+					      (touch_report.point_data[i].force / pressure_scale) | 0x01);
+          else
+            input_report_abs(input_dev, ABS_MT_PRESSURE, report_pressure);
+          // single touch
+          input_mt_report_pointer_emulation(input_dev, 0);
 					break;
 				}
 			}
-		}
-
-
-
-		if (touch_report.total_touch) {
-			input_report_key(input_dev, BTN_TOUCH, 1);
-		} else {
-			input_report_key(input_dev, BTN_TOUCH, 0);
-			input_report_abs(ts->input, ABS_PRESSURE, 0);
 		}
 		input_sync(input_dev);
 	}
@@ -1908,7 +1896,9 @@ static int pap11xx_ts_remove(struct i2c_client *client)
 	}
 
 	i2c_set_clientdata(client, NULL);
+
 	input_unregister_device(ts->input);
+  input_free_device(ts->input);
 
 	pap11xx_sysfs_remove(ts);
 

@@ -23,6 +23,8 @@
 #ifndef __NAND_ECC_H__
 #define __NAND_ECC_H__
 
+#include <linux/semaphore.h>
+
 #if defined(CONFIG_MTD_NAND_ECC_HW) && defined(CONFIG_MTD_NAND_ECC_BCH)
 #error "=============================================="
 #error "Select one nand hw ecc or bch ecc !!!"
@@ -94,6 +96,9 @@ struct nxp_nand {
 #ifdef CONFIG_MTD_NAND_VERIFY_WRITE
 	uint8_t *verify_page;
 #endif
+	int cart_ready;
+	int cart_ubi;
+	struct semaphore sem_hotswap;
 };
 
 #define mtd_to_nxp(m)			container_of(m, struct nxp_nand, mtd)
@@ -103,7 +108,7 @@ uint32_t wait_for_location_done(struct mtd_info *mtd);
 #endif
 
 #if defined(CONFIG_MTD_NAND_ECC_HW)
-int nand_hw_ecc_init_device (struct mtd_info *nand);
+int nand_hw_ecc_init_device (struct mtd_info *nand, int hw_ecc_mode);
 int nand_hw_ecc_fini_device (struct mtd_info *nand);
 int nand_ecc_layout_hwecc(struct mtd_info *mtd);
 #endif

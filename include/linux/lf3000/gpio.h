@@ -126,7 +126,8 @@ enum gpio_resource {
 
 	AUDIO_MUTE		= 110,
 	AUDIO_RST_L		= 111,
-	GPIO_NUMBER_VALUES	=112,
+	CHG_GRN_DISABLE = 112,
+	GPIO_NUMBER_VALUES	=113,
 };
 
 //Physical Specifier Helpers

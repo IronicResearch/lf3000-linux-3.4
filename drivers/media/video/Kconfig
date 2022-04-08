@@ -803,6 +803,24 @@ config VIDEO_HI253
     depends on I2C && VIDEO_V4L2
     ---help---
       This driver supports Hynix HI253 SoC camera module for V4L2 Media API.
+      
+config VIDEO_HI257
+    tristate "Hynix HI257 2M pixel camera sensor support"
+    depends on I2C && VIDEO_V4L2
+    ---help---
+      This driver supports Hynix HI257 SoC camera module for V4L2 Media API.
+
+config VIDEO_HM2056
+    tristate "Himax HM2056 2M pixel camera sensor support"
+    depends on I2C && VIDEO_V4L2
+    ---help---
+      This driver supports Himax HM2056 SoC camera module for V4L2 Media API.
+
+config VIDEO_HI253_HM2056
+    tristate "both HI253 HM2056 camera sensor support"
+    depends on I2C && VIDEO_V4L2
+    ---help---
+      This driver supports both camera module for V4L2 Media API.
 
 comment "Flash devices"
 

@@ -67,22 +67,22 @@ void GPIO_TRACE(int on)
  * Some globals to communicate between the FIQ and INTERRUPT
  */
 
-void * dummy_send;
-mphi_regs_t c_mphi_regs;
-int fiq_done, int_done;
-int g_next_sched_frame, g_np_count, g_np_sent, g_work_expected;
+//void * dummy_send;
+//mphi_regs_t c_mphi_regs;
+//int fiq_done, int_done;
+int g_next_sched_frame=0, g_np_count=0, g_np_sent=0, g_work_expected=0;
 // psw0523 fix
 //static int mphi_int_count = 0 ;
 
 extern bool fiq_fix_enable, nak_holdoff_enable;
 gintsts_data_t  gintsts_saved = {.d32 = 0};
-hcint_data_t    hcint_saved[MAX_EPS_CHANNELS];
-hcintmsk_data_t hcintmsk_saved[MAX_EPS_CHANNELS];
-int             split_out_xfersize[MAX_EPS_CHANNELS];
-haint_data_t    haint_saved;
+//hcint_data_t    hcint_saved[MAX_EPS_CHANNELS];
+//hcintmsk_data_t hcintmsk_saved[MAX_EPS_CHANNELS];
+//int             split_out_xfersize[MAX_EPS_CHANNELS];
+//haint_data_t    haint_saved;
 
-gintsts_data_t gintsts;
-gintmsk_data_t gintmsk;
+//gintsts_data_t gintsts = {.d32 = 0}; // FIXME: dwc_otg_hcd_handle_sof_intr()
+//gintmsk_data_t gintmsk = {.d32 = 0};
 
 // psw0523 fix
 #if 0
@@ -348,6 +348,7 @@ int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * hcd)
 	dwc_otg_transaction_type_e tr_type;
 	int did_something = 0;
 	int32_t next_sched_frame = -1;
+	gintsts_data_t gintsts = {.d32 = 0};
 
 	hfnum.d32 =
 	    DWC_READ_REG32(&hcd->core_if->host_if->host_global_regs->hfnum);
@@ -2336,7 +2337,7 @@ int32_t dwc_otg_hcd_handle_hc_n_intr(dwc_otg_hcd_t * dwc_otg_hcd, uint32_t num)
 		hcint.b.nyet = 0;
 	}
 	if (hcint.b.chhltd) {
-		retval |= handle_hc_chhltd_intr(dwc_otg_hcd, hc, hc_regs, qtd, hcint_orig, hcintmsk_saved[num]);
+		retval |= handle_hc_chhltd_intr(dwc_otg_hcd, hc, hc_regs, qtd, hcint_orig, hcintmsk);
 	}
 	if (hcint.b.ahberr) {
 		retval |= handle_hc_ahberr_intr(dwc_otg_hcd, hc, hc_regs, qtd);

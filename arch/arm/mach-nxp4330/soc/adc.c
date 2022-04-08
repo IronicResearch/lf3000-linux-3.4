@@ -244,14 +244,11 @@ unsigned short soc_adc_read(int ch, uint timeout)
 
 	NX_ADC_SetPrescalerEnable(0, CFALSE);
 	NX_ADC_SetPrescalerValue(0, div);
-    	NX_ADC_SetPrescalerEnable(0, CTRUE);
+	NX_ADC_SetPrescalerEnable(0, CTRUE);
 
 	DBGOUT("%s (ch=%d)\n", __func__, ch);
-#if 1	// 8sep11
+
 	if (0 == attach_count || ch > 7) 
-#else
-	if (0 == attach_count || ch > 6) 
-#endif	// 8sep11
 	{
 		printk(KERN_ERR "fail, not attached or not support ADC:%d ...\n", ch);
 		ADC_UNLOCK();

@@ -17,7 +17,19 @@
 #include <media/videobuf2-ion-nxp.h>
 #include <media/v4l2-subdev.h>
 
+#include "nxp-v4l2.h"
 #include "nxp-video.h"
+
+#ifndef ALIGN
+#define ALIGN(x,a) (((x)+(a)-1)&~((a)-1))
+#endif
+
+#define YUV_STRIDE_ALIGN_FACTOR	64
+#define YUV_VSTRIDE_ALIGN_FACTOR	16
+
+#define YUV_STRIDE(w)	ALIGN(w,YUV_STRIDE_ALIGN_FACTOR)
+#define YUV_YSTRIDE(w)	(ALIGN(w/2,YUV_STRIDE_ALIGN_FACTOR)*2)
+#define YUV_VSTRIDE(h)	ALIGN(h,YUV_VSTRIDE_ALIGN_FACTOR)
 
 /*
  * static variables
@@ -137,12 +149,28 @@ _set_plane_size(struct nxp_video_frame *frame, unsigned int sizes[])
         break;
 
     case V4L2_PIX_FMT_YUV420M:
+#if 0
         frame->size[0] = sizes[0] = frame->width * frame->height;
         frame->size[1] = sizes[1] =
         frame->size[2] = sizes[2] = frame->size[0] >> 2;
 
         frame->stride[0] = frame->width;
         frame->stride[1] = frame->stride[2] = frame->width >> 1;
+#else
+        frame->size[0] = YUV_YSTRIDE(frame->width) * YUV_VSTRIDE(frame->height); 
+        frame->size[1] = sizes[1] =
+        frame->size[2] = sizes[2] =  YUV_STRIDE(frame->width/2) * YUV_VSTRIDE(frame->height/2);
+
+        frame->stride[0] = YUV_YSTRIDE(frame->width);
+        frame->stride[1] = YUV_STRIDE(frame->width/2);
+        frame->stride[2] = YUV_STRIDE(frame->width/2);
+
+#if defined(CONFIG_NXP4330_LEAPFROG)
+        // FIXME: derive from v4l2 buffer sizes
+        frame->stride[0] = frame->stride[1] = frame->stride[2] = 4096;
+#endif
+
+#endif
         break;
 
     case V4L2_PIX_FMT_YUV420:
@@ -255,7 +283,14 @@ _fill_nxp_video_buffer(struct nxp_video_buffer *buf, struct vb2_buffer *vb)
         pr_debug("[BUF plane %d] addr(0x%x), s(%d)\n",
                 i, buf->dma_addr[i], buf->stride[i]);
     }
-
+#if defined(CONFIG_NXP4330_LEAPFROG)
+    // FIXME: shared planar buffer
+    if (frame->format.pixelformat == V4L2_PIX_FMT_YUV420M && frame->format.num_planes == 3) {
+        buf->dma_addr[1] = buf->dma_addr[0] + buf->stride[0]/2;
+        buf->dma_addr[2] = buf->dma_addr[1] + buf->stride[0] * frame->height/2;
+        pr_debug("[BUF plane fixup] addr(0x%x), addr(0x%x)\n", buf->dma_addr[1], buf->dma_addr[2]);
+    }
+#endif
     buf->consumer_index = 0;
     return 0;
 }
@@ -687,7 +722,7 @@ static int nxp_video_set_format(struct file *file, void *fh,
         return -EINVAL;
     }
 
-    printk("%s: name(%s), width %d, height %d\n", __func__, me->name, pix->width, pix->height);
+    pr_debug("%s: name(%s), width %d, height %d\n", __func__, me->name, pix->width, pix->height);
 
     subdev = _get_remote_subdev(me, f->type, &pad);
     if (!subdev) {
@@ -798,7 +833,7 @@ static int nxp_video_streamon(struct file *file, void *fh,
     void *hostdata_back;
 
     /* pr_debug("%s\n", __func__); */
-     printk("%s: me %p, %s\n", __func__, me, me->name);
+     pr_debug("%s: me %p, %s\n", __func__, me, me->name);
 
     if (me->vbq) {
         ret = vb2_streamon(me->vbq, i);
@@ -840,7 +875,7 @@ static int nxp_video_streamoff(struct file *file, void *fh,
     if (me->vbq) {
         ret = vb2_streamoff(me->vbq, i);
         if (ret < 0) {
-            printk(KERN_ERR "%s: failed to vb2_streamoff() %s\n", __func__, me->name);
+            pr_err(KERN_ERR "%s: failed to vb2_streamoff() %s\n", __func__, me->name);
             return 0;
         }
     } else {
@@ -852,14 +887,14 @@ static int nxp_video_streamoff(struct file *file, void *fh,
         }
     }
 
-    printk("%s %s\n", __func__, me->name);
+    pr_debug("%s %s\n", __func__, me->name);
 
     hostdata_back = v4l2_get_subdev_hostdata(subdev);
     v4l2_set_subdev_hostdata(subdev, me->name);
     ret = v4l2_subdev_call(subdev, video, s_stream, 0);
     v4l2_set_subdev_hostdata(subdev, hostdata_back);
 
-    printk("%s: %s exit\n", __func__, me->name);
+    pr_debug("%s: %s exit\n", __func__, me->name);
 
     return ret;
 }
@@ -963,7 +998,7 @@ static int nxp_video_set_crop(struct file *file, void *fh,
     struct v4l2_subdev_crop subdev_crop;
 
     /* pr_debug("%s\n", __func__); */
-     printk("%s: name %s, crop pad %d\n", __func__, me->name, a->pad);
+     pr_debug("%s: name %s, crop pad %d\n", __func__, me->name, a->pad);
 
     subdev_crop.which = V4L2_SUBDEV_FORMAT_ACTIVE;
     /* TODO */
@@ -992,7 +1027,7 @@ static int nxp_video_set_crop(struct file *file, void *fh,
 #endif
     subdev_crop.rect = a->c;
 
-     printk("%s: call subdev set_crop\n", __func__);
+     pr_debug("%s: call subdev set_crop\n", __func__);
     ret = v4l2_subdev_call(subdev, pad, set_crop, NULL, &subdev_crop);
     if (ret < 0) {
         pr_err("%s: failed to subdev set_crop, ret %d\n", __func__, ret);

@@ -48,7 +48,8 @@
 */
 
 //#define DUMP_DMA_ENABLE
-#define	DUMP_DMA_PATH			"/data/pcm/pcm_dma.law"
+#define	DUMP_DMA_PATH_P			"/tmp/pcm_dma_p.raw"
+#define	DUMP_DMA_PATH_C			"/tmp/pcm_dma_c.raw"
 #define	DUMP_DMA_TIME			20	/* sec */
 #define	DUMP_SAMPLE_COMPLETED
 //#define	DUMP_DMA_CONTINUOUS
@@ -160,6 +161,139 @@ static void nxp_pcm_file_mem_write(struct snd_pcm_substream *substream)
 #define	nxp_pcm_file_mem_write(s)
 #endif
 
+static void nxp_pcm_dma_clear(struct snd_pcm_substream *substream)
+{
+	struct nxp_pcm_runtime_data *prtd = substream_to_prtd(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	int length = snd_pcm_lib_period_bytes(substream);
+	unsigned offset = prtd->offset - length;
+	void *src_addr = NULL;
+	src_addr = (void*)(runtime->dma_area + offset);
+
+	if ((prtd->dma_chan->chan_id >= DMA_PERIPHERAL_ID_I2S0_TX) 
+		&& (prtd->dma_chan->chan_id <= DMA_PERIPHERAL_ID_I2S2_RX)) {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			memset(src_addr, 0, length);
+		}
+	}
+}
+
+/*
+ * Debugging, output PCM data to a file
+ */
+
+struct workqueue_struct * i2s_file_write_tasks;
+struct work_struct i2s_file_write_work;
+
+char *pOutputFileName = NULL;
+
+char * i2s_get_output_filename(void)
+{
+	return pOutputFileName;
+}
+EXPORT_SYMBOL(i2s_get_output_filename);
+
+int i2s_set_output_filename(const char * szFileName)
+{
+	if (pOutputFileName)	/* free any old filename */
+		kfree(pOutputFileName);
+	pOutputFileName = kzalloc(strlen(szFileName) + 1, GFP_KERNEL);
+	if (! pOutputFileName) {
+		printk(KERN_ERR "%s failed to allocate filename memory\n", __FUNCTION__);
+		return -ENOMEM;
+	}
+	strncpy(pOutputFileName, szFileName, strlen(szFileName) + 1);
+	return 0;
+}
+EXPORT_SYMBOL(i2s_set_output_filename);
+
+/*
+ * Debugging, show data block
+ */
+#define	FRAME_SIZE	sizeof(unsigned int)
+int frames_to_show;
+void *p_dump_data;
+int sizeof_dump_data;
+int bytes_captured;
+
+int i2s_get_dump_data_remaining(void)
+{
+	return frames_to_show;
+}
+EXPORT_SYMBOL(i2s_get_dump_data_remaining);
+
+int i2s_set_dump_data_count(int num_frames)
+{
+	/*  allocate output data area */
+	frames_to_show = num_frames;
+	sizeof_dump_data = num_frames * FRAME_SIZE;
+	bytes_captured = 0;
+	if (p_dump_data)
+		vfree(p_dump_data);
+	p_dump_data = vzalloc(sizeof_dump_data);
+	if (!p_dump_data) {
+		printk(KERN_ERR "fail, %s allocate data capture buffer\n", __FUNCTION__);
+		return -ENOMEM;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(i2s_set_dump_data_count);
+
+/*
+ * write I2S buffer to a file
+ */
+static void i2s_file_write_free(struct work_struct *work)
+{
+	unsigned int mode = O_CREAT|O_RDWR|O_LARGEFILE|O_APPEND;
+	struct file *filp = filp_open(pOutputFileName, mode, 0777);
+	if (filp) {
+		loff_t pos = 0;
+		mm_segment_t old_fs = get_fs();
+		set_fs (KERNEL_DS);
+		vfs_write(filp, p_dump_data, sizeof_dump_data, &pos);
+		set_fs(old_fs);
+		filp_close(filp, NULL);
+		if (p_dump_data)
+			vfree(p_dump_data);
+		p_dump_data = NULL;
+		sizeof_dump_data = 0;
+		bytes_captured = 0;
+	}
+}
+
+/*
+ * i2s_frame_write
+ *     capture data to buffer, write file when full
+ */
+void i2s_frame_write(struct snd_pcm_substream *substream)
+{
+	struct nxp_pcm_runtime_data *prtd = substream_to_prtd(substream);
+
+	/* print out data to show */
+	if ((bytes_captured < sizeof_dump_data) && substream->runtime) {
+		struct snd_pcm_runtime *runtime = substream->runtime;
+		unsigned offset = prtd->offset;
+		int length = min((int)snd_pcm_lib_period_bytes(substream),
+				 (sizeof_dump_data - bytes_captured));
+		void *src_addr;
+
+	#ifdef DUMP_SAMPLE_COMPLETED
+		if (offset == 0)
+			offset = snd_pcm_lib_buffer_bytes(substream);
+		offset  -= length;
+		src_addr = (void*)(runtime->dma_area + offset);
+	#else
+		src_addr = (void*)(runtime->dma_area + offset);
+	#endif
+		memcpy((p_dump_data + bytes_captured), src_addr, length);
+		bytes_captured += length;
+		if (sizeof_dump_data <= bytes_captured) {	/* write data buffer to file */
+			queue_work(i2s_file_write_tasks, &i2s_file_write_work);
+		}
+
+	}
+}
+
 /*
  * PCM INTERFACE
  */
@@ -173,11 +307,15 @@ static void nxp_pcm_dma_complete(void *arg)
 	int over_samples = div64_s64((new - ts), period_us);
 	int i;
 
-	if (0 == over_samples){
-		over_samples = 1;
-		prtd->time_stamp_us = new;
-	} else {
-		prtd->time_stamp_us += (over_samples*period_us);
+
+	/* i2s master mode */
+	if(prtd->dma_param->real_clock != 0) {
+		if (2 > over_samples){
+			over_samples = 1;
+			prtd->time_stamp_us = new;
+		} else {
+			prtd->time_stamp_us += (over_samples*period_us);
+		}
 	}
 
 	/*
@@ -185,17 +323,22 @@ static void nxp_pcm_dma_complete(void *arg)
 		printk("[pcm overs :%d]\n", over_samples);
 	*/
 	/*
-		pr_debug("snd pcm: %s complete offset = %8d (preiodbytes=%d) over samples = %d\n",
-		STREAM_STR(substream->stream), prtd->offset,
-		snd_pcm_lib_period_bytes(substream), over_samples);
+	 pr_debug("snd pcm: %s complete offset = %8d (preiodbytes=%d) over samples = %d\n",
+	 	STREAM_STR(substream->stream), prtd->offset,
+	 	snd_pcm_lib_period_bytes(substream), over_samples);
 	*/
-	for (i = 0; over_samples > i; i++) {
-		prtd->offset += snd_pcm_lib_period_bytes(substream);
-		if (prtd->offset >= snd_pcm_lib_buffer_bytes(substream))
-			prtd->offset = 0;
+	if(prtd->dma_param->real_clock != 0) {
+		/* i2s master mode */
+		for (i = 0; over_samples > i; i++) {
+			prtd->offset += snd_pcm_lib_period_bytes(substream);
+			if (prtd->offset >= snd_pcm_lib_buffer_bytes(substream))
+				prtd->offset = 0;
 
-		nxp_pcm_file_mem_write(substream);
-		snd_pcm_period_elapsed(substream);
+			nxp_pcm_file_mem_write(substream);
+			i2s_frame_write(substream);		/* just for dumping data */
+			nxp_pcm_dma_clear(substream);
+			snd_pcm_period_elapsed(substream);
+		}
 	}
 }
 
@@ -319,11 +462,17 @@ static int nxp_pcm_dma_prepare_and_submit(struct snd_pcm_substream *substream)
 	/*
 	 * debug msg
 	 */
-	period_time_us = (1000000*1000)/((prtd->dma_param->real_clock*1000)/runtime->period_size);
+	if(prtd->dma_param->real_clock != 0) /* i2s master mode */
+		period_time_us = (1000000*1000)/
+			((prtd->dma_param->real_clock*1000)/runtime->period_size);
+	else /* i2s slave mode */
+		period_time_us = 1000;
+
 	pr_debug("%s: %s\n", __func__, STREAM_STR(substream->stream));
 	pr_debug("buffer_bytes=%6d, period_bytes=%6d, periods=%2d, rate=%6d, period_time=%3d ms\n",
 		snd_pcm_lib_buffer_bytes(substream), snd_pcm_lib_period_bytes(substream),
 		runtime->periods, runtime->rate, period_time_us/1000);
+
 	return 0;
 }
 
@@ -434,10 +583,20 @@ static int nxp_pcm_hw_params(struct snd_pcm_substream *substream,
 	prtd->periods = params_periods(params);
 	prtd->period_bytes = params_period_bytes(params);
 	prtd->buffer_bytes = params_buffer_bytes(params);
-	prtd->period_time_us = (1000000*1000)/((prtd->dma_param->real_clock*1000)/params_period_size(params));
+
+	/* i2s master mode */
+	if(prtd->dma_param->real_clock != 0)
+		prtd->period_time_us = (1000000*1000)/
+			((prtd->dma_param->real_clock*1000)/params_period_size(params));
+	else /* i2s slave mode */
+		prtd->period_time_us = 1000;
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
-	nxp_pcm_file_mem_allocate(DUMP_DMA_PATH, substream, params);
+
+	if(substream->stream == 0)
+		nxp_pcm_file_mem_allocate(DUMP_DMA_PATH_P, substream, params);
+	else
+		nxp_pcm_file_mem_allocate(DUMP_DMA_PATH_C, substream, params);
 
 	/*
 	 * debug msg
@@ -453,7 +612,11 @@ static int nxp_pcm_hw_params(struct snd_pcm_substream *substream,
 
 static int nxp_pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	nxp_pcm_file_mem_free(DUMP_DMA_PATH, substream);
+	if(substream->stream == 0)
+		nxp_pcm_file_mem_free(DUMP_DMA_PATH_P, substream);
+	else
+		nxp_pcm_file_mem_free(DUMP_DMA_PATH_C, substream);
+
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
 }
@@ -570,6 +733,12 @@ static struct snd_soc_platform_driver pcm_platform = {
 static int __devinit nxp_pcm_probe(struct platform_device *pdev)
 {
 	int ret = snd_soc_register_platform(&pdev->dev, &pcm_platform);
+	i2s_set_output_filename(DUMP_DMA_PATH_P);		/* set default filename */
+
+	/* setup tasklet to complete file write outside of interrupt handler */
+	i2s_file_write_tasks = create_singlethread_workqueue("i2s_file_write_tasks");
+	INIT_WORK(&i2s_file_write_work, i2s_file_write_free);
+
 	printk(KERN_INFO "snd pcm: %s sound platform '%s'\n", ret?"fail":"register", pdev->name);
 	return ret;
 }

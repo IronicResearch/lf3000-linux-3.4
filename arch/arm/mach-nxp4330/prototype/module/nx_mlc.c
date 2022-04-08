@@ -1821,11 +1821,11 @@ void	NX_MLC_SetRGBLayerAddress( U32 ModuleIndex, U32 layer, U32 addr )
 	NX_ASSERT( CNULL != __g_ModuleVariables[ModuleIndex].pRegister );
 
 
-	//@modified choiyk 2013-01-21 ¿ÀÈÄ 10:11:04
-	//¾Æ¸¶ ÀÌºÎºÐÀº locksize¿¡ µû¶ó Æ²¸±°ÍÀ¸·Î »ý°¢µÇ´Âµ¥
-	//ÀÏ´Ü ÃÖ´ë 256 alingÀÌ µÇ¾î¾ßÇÑ´Ù. ( 16length)
+	//@modified choiyk 2013-01-21 ï¿½ï¿½ï¿½ï¿½ 10:11:04
+	//ï¿½Æ¸ï¿½ ï¿½ÌºÎºï¿½ï¿½ï¿½ locksizeï¿½ï¿½ ï¿½ï¿½ï¿½ Æ²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ç´Âµï¿½
+	//ï¿½Ï´ï¿½ ï¿½Ö´ï¿½ 256 alingï¿½ï¿½ ï¿½Ç¾ï¿½ï¿½ï¿½Ñ´ï¿½. ( 16length)
 
-	//NX_ASSERT( 0 == (addr % 256) ); // 16bit alignÀÌ µÇ¾î¾ßÇÔ
+	//NX_ASSERT( 0 == (addr % 256) ); // 16bit alignï¿½ï¿½ ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½
 
 
 	pRegister = __g_ModuleVariables[ModuleIndex].pRegister;
@@ -2268,8 +2268,8 @@ void	NX_MLC_SetVideoLayerAddress( U32 ModuleIndex, U32 LuAddr, U32 CbAddr, U32 C
 	register struct NX_MLC_RegisterSet* pRegister;
 
 	NX_ASSERT( NUMBER_OF_MLC_MODULE > ModuleIndex );
-	//@modified choiyk 2012-10-29 ¿ÀÈÄ 5:37:02
-	// 16 AlignÀÌ µÇ¾î¾ßÇÔ!
+	//@modified choiyk 2012-10-29 ï¿½ï¿½ï¿½ï¿½ 5:37:02
+	// 16 Alignï¿½ï¿½ ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½!
 #if !defined(CONFIG_PLAT_NXP2120_MID) || !defined(CONFIG_PLAT_NXP2120_CREATE)
 	NX_ASSERT( 0 == (LuAddr & 15) );
 	NX_ASSERT( 0 == (CbAddr & 15) );
@@ -2543,6 +2543,12 @@ void	NX_MLC_SetVideoLayerScale( U32 ModuleIndex, U32 sw, U32 sh, U32 dw, U32 dh,
 
 	hscale = (sw << 11) / dw;
 
+	if( (bHLumaEnb || bHChromaEnb) && (dw > sw) )
+	{
+		// Adjust horizontal scaler for edge artifact, as in vertical case below
+		hscale--;
+	}
+
 	// VScale
 	if( (bVLumaEnb || bVChromaEnb) && ( dh > sh ) )
 	{
@@ -2621,8 +2627,8 @@ void	NX_MLC_SetVideoLayerLumaEnhance( U32 ModuleIndex, U32 contrast, S32 brightn
  *					(B-Y)' = (B-Y)*CbA + (R-Y)*CbB \n
  *					(R-Y)' = (B-Y)*CrA + (R-Y)*CrB \n
  *				, where \n
- *					CbA = cos(¥è) * 64 * gain, CbB = -sin(¥è) * 64 * gain \n
- *					CrA = sin(¥è) * 64 * gain, CrB =	cos(¥è) * 64 * gain \n
+ *					CbA = cos(ï¿½ï¿½) * 64 * gain, CbB = -sin(ï¿½ï¿½) * 64 * gain \n
+ *					CrA = sin(ï¿½ï¿½) * 64 * gain, CrB =	cos(ï¿½ï¿½) * 64 * gain \n
  *					gain is 0 to 2. \n
  *				The example for this equation is as follows.
  *	@code
@@ -3158,7 +3164,7 @@ CBOOL	NX_MLC_GetVideoLayerGammaEnable( U32 ModuleIndex )
 
 
 //----------------------------------------------------------------
-// Prototype ÀÌ½Ä
+// Prototype ï¿½Ì½ï¿½
 //----------------------------------------------------------------
 //------------------------------------------------------------------------------
 /// @brief	set MLC Controller parameter
@@ -3195,8 +3201,8 @@ NX_MLC_SetMLCTopControlParameter
 //------------------------------------------------------------------------------
 /// @brief	set RGB layer control parameter
 //------------------------------------------------------------------------------
-// ÀÌ ÇÔ¼ö´Â ¿¹ÀüÀÇ 4bit Alpha¸¦ °¡Á¤ÇÏ°í ÀÛ¼ºÇÑ ¹öÀüÀÌ´Ù.
-// 8bit Alpha¸¦ ¼³Á¤ÇÏ´Â ÇÔ¼ö´Â µû·Î ¸¸µéµµ·Ï ÇÑ´Ù.
+// ï¿½ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 4bit Alphaï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½Û¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
+// 8bit Alphaï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½éµµï¿½ï¿½ ï¿½Ñ´ï¿½.
 void
 NX_MLC_SetRGB0LayerControlParameter
 (
@@ -3233,13 +3239,13 @@ NX_MLC_SetRGB0LayerControlParameter
     ControlEnb = (U32)((GRP3DEnable<<8) | (LayerEnable << 5) | (BlendEnable<<2) | (InvEnable<<1) | TpEnable) & 0x127;
     AlphaArgument = (U32)(AlphaValue&0xF);
 
-	// Masking Ãß°¡.
+	// Masking ï¿½ß°ï¿½.
     RGB0ControlReg = ReadIODW(&pRegister->MLCRGBLAYER[0].MLCCONTROL) & 0x10;
     regvalue = (U32)(((LayerFormat<<16) | ControlEnb | (LockSize<<12)) | RGB0ControlReg);
     WriteIODW(&pRegister->MLCRGBLAYER[0].MLCCONTROL, regvalue );
 
-    //@todo choiyk 2012-10-15 ¿ÀÀü 10:45:23
-    // AlphaÃ¤³ÎÀÌ 8bit·Î ´Ã¾î³ª°Ô µÈ´Ù. (ÀÌ ÇÔ¼öÀÚÃ¼´Â 4bit Alpha¸¦ »ç¿ë)
+    //@todo choiyk 2012-10-15 ï¿½ï¿½ï¿½ï¿½ 10:45:23
+    // AlphaÃ¤ï¿½ï¿½ï¿½ï¿½ 8bitï¿½ï¿½ ï¿½Ã¾î³ªï¿½ï¿½ ï¿½È´ï¿½. (ï¿½ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ 4bit Alphaï¿½ï¿½ ï¿½ï¿½ï¿½)
     regvalue  = (U32)((AlphaArgument<<28) | TransparencyColor);
     WriteIODW(&pRegister->MLCRGBLAYER[0].MLCTPCOLOR, regvalue );
 
@@ -3573,8 +3579,8 @@ NX_MLC_SetVideoLayerCoordinate
 
 
 	//===========================================
-	//@modified choiyk 2013-01-25 ¿ÀÈÄ 12:38:34
-	// ¹Ý¿Ã¸²À» Ãß°¡ÇØº»´Ù.
+	//@modified choiyk 2013-01-25 ï¿½ï¿½ï¿½ï¿½ 12:38:34
+	// ï¿½Ý¿Ã¸ï¿½ï¿½ï¿½ ï¿½ß°ï¿½ï¿½Øºï¿½ï¿½ï¿½.
 	//===========================================
 	//HScale  =   (S32)((Source_Width*(1UL<<11))/Destination_Width);
     //VScale  =   (S32)((Source_Height*(1UL<<11))/Destination_Height);
@@ -3622,8 +3628,8 @@ void NX_MLC_SetGammaControlParameter
 
 
 //---------------
-// 8bit Alpha ¼³Á¤ ÇÔ¼ö(´Ù¸¥ ÇÔ¼öµéÀº ´Ù 4bit¸¦ ±âÁØÀ¸·Î »ý°¢ÇÑ´Ù.)
-// Alpha°ª¸¸ ¼³Á¤ÇÑ´Ù.
+// 8bit Alpha ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½(ï¿½Ù¸ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ 4bitï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ñ´ï¿½.)
+// Alphaï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
 //---------------
 
 void NX_MLC_SetLayerAlpha256(U32 ModuleIndex, U32 Layer, U32 Alpha)

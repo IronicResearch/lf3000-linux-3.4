@@ -17,10 +17,10 @@ export PATH=/opt/angstrom-denzil/sysroots/i686-angstromsdk-linux/usr/bin/armv7a-
 #export TARGET_MACH=nxp4330_r3k_defconfig
 #export TARGET_MACH=nxp4330_r3k_lcd_defconfig
 #export TARGET_MACH=nxp4330_r3k_hdmi_defconfig
-#export TARGET_MACH=nxp4330_cabo_defconfig
+export TARGET_MACH=nxp4330_cabo_defconfig
 #export TARGET_MACH=nxp4330_glasgow_defconfig
 #export TARGET_MACH=nxp4330_r3k_nand_defconfig
-export TARGET_MACH=nxp4330_bogota_defconfig
+#export TARGET_MACH=nxp4330_bogota_defconfig
 
 #export CROSS_COMPILE=arm-cortex_a9-linux-gnueabi-
 #export CROSS_COMPILE=arm-none-linux-gnueabi-

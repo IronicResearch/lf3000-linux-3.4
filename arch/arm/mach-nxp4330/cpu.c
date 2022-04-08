@@ -60,6 +60,44 @@
 extern void __init init_consistent_dma_size(unsigned long size);
 #endif
 
+extern size_t getSystemSize(unsigned int revision);
+
+/*------------------------------------------------------------------------------
+ * 	cpu initialize and io/memory map, LeapFrog version
+ * 	procedure: fixup -> map_io -> init_irq -> timer init -> init_machine
+ * 	Use ATAG_MEM value from U-Boot, if present.
+ */
+static void __init lf_cpu_fixup(struct tag *tags, char **cmdline,
+				struct meminfo *mi) {
+
+	DBGOUT("%s\n", __func__);
+
+	/* set defaults, in case ATAG_MEM tag not provided by U-Boot */
+
+	if (CFG_MEM_NUMBER_OF_BANKS != 1)
+		printk(KERN_INFO "%s.%s:%d  multiple memory banks defined, dynamic memory size calculation may be incorrect\n",
+			__FILE__, __FUNCTION__, __LINE__);
+
+	mi->nr_banks      = CFG_MEM_NUMBER_OF_BANKS;
+	mi->bank[0].start = CFG_MEM_PHY_SYSTEM_BASE;
+
+#if !defined(CFG_MEM_PHY_DMAZONE_SIZE)
+	mi->bank[0].size  = CFG_MEM_PHY_SYSTEM_SIZE;
+#else
+	mi->bank[0].size  = CFG_MEM_PHY_SYSTEM_SIZE + CFG_MEM_PHY_DMAZONE_SIZE;
+#endif
+
+	/* look for ATAG_MEM */
+	for (; tags->hdr.size; tags = tag_next(tags)) {
+		if (tags->hdr.tag == ATAG_MEM) {
+			mi->bank[0].start = tags->u.mem.start;	/* DDR mem start from U-Boot */
+			mi->bank[0].size  = tags->u.mem.size;	/* DDR mem_size from U-Boot  */
+			break;
+		}
+	}
+}
+
+
 /*------------------------------------------------------------------------------
  * 	cpu initialize and io/memory map.
  * 	procedure: fixup -> map_io -> init_irq -> timer init -> init_machine
@@ -68,15 +106,17 @@ static void __init cpu_fixup(struct tag *tags, char **cmdline, struct meminfo *m
 {
 	DBGOUT("%s\n", __func__);
 	/*
-	 * system momory  = system mem size + dma zone size
+	 * system memory  = system mem size + dma zone size
 	 */
-    mi->nr_banks      = 1;
+	mi->nr_banks      = 1;
 	mi->bank[0].start = CFG_MEM_PHY_SYSTEM_BASE;
+
 #if !defined(CFG_MEM_PHY_DMAZONE_SIZE)
 	mi->bank[0].size  = CFG_MEM_PHY_SYSTEM_SIZE;
 #else
-    mi->bank[0].size  = CFG_MEM_PHY_SYSTEM_SIZE + CFG_MEM_PHY_DMAZONE_SIZE;
+	mi->bank[0].size  = CFG_MEM_PHY_SYSTEM_SIZE + CFG_MEM_PHY_DMAZONE_SIZE;
 #endif
+
 }
 
 #if	defined(CONFIG_SMP)
@@ -230,7 +270,11 @@ extern struct sys_timer nxp_cpu_sys_timer;
 
 MACHINE_START(NXP4330, CFG_SYS_CPU_NAME)
 	.atag_offset	=  0x00000100,
+#if defined(CONFIG_NXP4330_LEAPFROG)
+	.fixup			=  lf_cpu_fixup,
+#else
 	.fixup			=  cpu_fixup,
+#endif
 	.map_io			=  cpu_map_io,
 	.init_irq		=  nxp_cpu_init_irq,
 #ifdef CONFIG_ARM_GIC

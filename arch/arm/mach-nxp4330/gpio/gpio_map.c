@@ -57,7 +57,7 @@ static void init_bogota(void)
 	/* NC             - pin A15 */
 
 	/* NC             - pin A16 */
-	/* NC             - pin A17 */
+	gpio_map[CHG_GRN_DISABLE] 	= LF3000_GPIO_PORT_A | 17;
 	/* NC             - pin A18 */
 	/* NC             - pin A19 */
 	/* NC             - pin A20 */
@@ -368,8 +368,8 @@ static void init_cabo(void)
 	gpio_map[I2C_SDA0]              = LF3000_GPIO_PORT_D | 3;
 	gpio_map[I2C_SCL1]              = LF3000_GPIO_PORT_D | 4;
 	gpio_map[I2C_SDA1]              = LF3000_GPIO_PORT_D | 5;
-	gpio_map[TOUCHSCREEN_Y1]	= LF3000_GPIO_PORT_D | 6;	//FIXME CTP_SCL_RTP_Y1_R
-	gpio_map[TOUCHSCREEN_X1]        = LF3000_GPIO_PORT_D | 7;       //FIXME CTP_SCL_RTP_X1_R
+	gpio_map[I2C_SCL2]	            = LF3000_GPIO_PORT_D | 6;
+	gpio_map[I2C_SDA2]              = LF3000_GPIO_PORT_D | 7;
 
         /* N/C          - pin  D8  */
         /* I2SDOUT_OUT  - pin  D9  */
@@ -1074,6 +1074,214 @@ static void init_xanadu(void)
 }	/* init_xanadu() */
 
 
+static void init_quito(void)
+{
+  printk(KERN_WARNING "%s: QUITO (Alpha) GPIO mapping\n", __func__);
+
+        /* UNRESOLVED: FCAM_CLK_ENA_L, USB_CHG_DETECT */
+
+        /* GPIO Port A */
+        /* VOUT_PCLK_R  - pin  A0 */
+        /* PVD0      - pin  A1 */
+        /* PVD1      - pin  A2 */
+        /* PVD2      - pin  A3 */
+        /* PVD3      - pin  A4 */
+        /* PVD4      - pin  A5 */
+        /* PVD5      - pin  A6 */
+        /* PVD6      - pin  A7 */
+
+        /* PVD7      - pin  A8 */
+        /* PVD8      - pin  A9 */
+        /* PVD9      - pin A10 */
+        /* PVD10     - pin A11 */
+        /* PVD11     - pin A12 */
+        /* PVD12     - pin A13 */
+        /* PVD13     - pin A14 */
+        /* PVD14     - pin A15 */
+
+        /* PVD15     - pin A16 */
+        /* PVD16     - pin A17 */
+        /* PVD17     - pin A18 */
+        /* PVD18     - pin A19 */
+        /* PVD19     - pin A20 */
+        /* PVD20     - pin A21 */
+        /* PVD21     - pin A22 */
+        /* PVD22     - pin A23 */
+
+        /* PVD23         - pin A24 */
+        /* VOUT_PVSYNC_R - pin A25 */
+        /* VOUT_PHSYNC_R - pin A26 */
+        /* VOUT_DE_R     - pin A27 */
+        /* VID1_PCLK     - pin A28 */
+        /* SDCLK0_R      - pin A29 */
+        /* VID1_0        - pin A30 */
+        /* SDCMD0_R      - pin A31 */
+
+        /* GPIO Port B */
+        /* VID1_1      - pin  B0 */
+        /* SDDAT00_R   - pin  B1 */
+        /* VID1_2      - pin  B2 */
+        /* SDDAT01_R   - pin  B3 */
+        /* VID1_3      - pin  B4 */
+        /* SDDAT02_R   - pin  B5 */
+        /* VID1_4      - pin  B6 */
+        /* SDDAT03_R   - pin  B7 */
+
+        /* VID1_5     - pin  B8 */
+        /* VID1_6     - pin  B9 */
+        /* VID1_7     - pin B10 */
+        /* NAND_CLE_R - pin B11 */
+        /* NAND_ALE_R - pin B12 */
+        /* SD0        - pin B13 */
+        /* NAND_RNB   - pin B14 */
+#if 0 /* 4nov13  Added, then disabled after seeing that NAND_RBN isn't defined */
+  gpio_map[NAND_RNB]    = LF3000_GPIO_PORT_B | 14;
+#endif  /* 4nov13 */
+        /* SD1        - pin B15 */
+
+        /* NAND_NFOE_R_L  - pin B16 */
+        /* SD2            - pin B17 */
+        /* NAND_NFWE_R_L  - pin B18 */
+        /* SD3            - pin B19 */
+        /* SD4            - pin B20 */
+        /* SD5            - pin B21 */
+        /* SD6            - pin B22 */
+        /* SD7            - pin B23 */
+
+  gpio_map[TOUCHSCREEN_Y2]  = LF3000_GPIO_PORT_B | 24;  //FIXME CTP_RST_RTP_Y2_R
+  gpio_map[TOUCHSCREEN_X2]  = LF3000_GPIO_PORT_B | 25;  //FIXME CTP_INT_RTP_X2_R
+  /* N/C      - pin B26 */
+  /* N/C            - pin B27 */
+  /* N/C            - pin B28 */
+  gpio_map[BUTTON_VOLUMEUP]       = LF3000_GPIO_PORT_B | 29;
+  gpio_map[BUTTON_VOLUMEDOWN]     = LF3000_GPIO_PORT_B | 30;
+  /* N/C            - pin B31 */
+
+        /* GPIO Port C */
+  /* N/C           - pin C0  */
+        /* N/C           - pin C1  */
+        /* N/C           - pin C2  */
+        /* N/C     - pin C3  */
+  gpio_map[LFP100_INT]    = LF3000_GPIO_PORT_C | 4;
+        /* CIP_L         - pin C5  */
+  gpio_map[CARTRIDGE_DETECT]  = LF3000_GPIO_PORT_C | 5;
+  gpio_map[ACCEL_INT]             = LF3000_GPIO_PORT_C | 6;
+        /* N/C           - pin C7  */
+
+  /* N/C        - pin C8  */
+        /* SSPCLK2    - pin C9  */
+        /* SSPFRM2    - pin C10 */
+        /* SSPRXD2    - pin C11 */
+        /* SSPTXD2    - pin C12 */
+        /* N/C        - pin C13 */
+        /* N/C        - pin C14 */
+  gpio_map[FRONT_CAM_ENABLE_L]    = LF3000_GPIO_PORT_C | 15;  //FIXME VID2_ENA_L
+
+  gpio_map[FRONT_CAM_RESET_L]     = LF3000_GPIO_PORT_C | 16;  //FIXME VID2_RESET_L
+        /* N/C        - pin C17 */
+        /* SDCLK2     - pin C18 */
+        /* SDCMD2     - pin C19 */
+        /* SDDAT20    - pin C20 */  //FIXME - need to check if these pins (c20 - c23) are same as SD0_D0 - SD0_D3
+        /* SDDAT21    - pin C21 */
+        /* SDDAT22    - pin C22 */
+        /* SDDAT23    - pin C23 */
+
+        /* N/C        - pin C24 */
+        /* nSWAIT     - pin C25 */  //FIXME - do we need to map this ?
+        /* N/C        - pin C26 */
+        /* N/C        - pin C27 */
+        /* N/C        - pin C28 */
+        /* SSPCLK0_R  - pin C29 */
+        /* SSPFRM0    - pin C30 */
+        /* SSPTXD0    - pin C31 */
+
+        /* GPIO Port D */
+
+        /* SSPRXD0    - pin  D0 */
+        /* MCU_PWM0   - pin  D1 */
+  gpio_map[I2C_SCL0]              = LF3000_GPIO_PORT_D | 2;
+  gpio_map[I2C_SDA0]              = LF3000_GPIO_PORT_D | 3;
+  gpio_map[I2C_SCL1]              = LF3000_GPIO_PORT_D | 4;
+  gpio_map[I2C_SDA1]              = LF3000_GPIO_PORT_D | 5;
+  gpio_map[I2C_SCL2]              = LF3000_GPIO_PORT_D | 6;
+  gpio_map[I2C_SDA2]              = LF3000_GPIO_PORT_D | 7;
+
+        /* N/C          - pin  D8  */
+        /* I2SDOUT_OUT  - pin  D9  */
+        /* I2SBCLK  - pin  D10 */
+        /* I2SDIN       - pin  D11 */
+        /* I2SSYNC  - pin  D12 */
+        /* I2SMCLK    - pin  D13 */
+        /* RX0          - pin  D14 */
+        /* N/C          - pin  D15 */
+
+        /* N/C          - pin D16 */
+        /* N/C    - pin D17 */
+        /* TX0          - pin D18 */
+  gpio_map[WIFI_RESET]    = LF3000_GPIO_PORT_D | 19;
+  gpio_map[CHG_FLT]               = LF3000_GPIO_PORT_D | 20;
+        /* N/C     - pin D21 */
+        /* SDCLK1_R      - pin D22 */
+        /* SDCMD1_R      - pin D23 */
+
+        /* SDDAT10_R     - pin D24 */
+        /* SDDAT11_R     - pin D25 */
+        /* SDDAT12_R     - pin D26 */
+        /* SDDAT13_R     - pin D27 */
+        /* VID0_0        - pin D28 */
+        /* VID0_1        - pin D29 */
+        /* VID0_2        - pin D30 */
+        /* VID0_3        - pin D31 */
+
+        /* GPIO PORT E */
+        /* VID0_4        - pin E0  */
+        /* VID0_5        - pin E1  */
+        /* VID0_6        - pin E2  */
+        /* VID0_7        - pin E3  */
+        /* VID0_PCLK     - pin E4  */
+  gpio_map[REAR_CAM_ENABLE_L] = LF3000_GPIO_PORT_E | 5;
+  gpio_map[REAR_CAM_RESET_L]  = LF3000_GPIO_PORT_E | 6;
+        /* N/C           - pin E7  */
+
+        /* N/C     - pin E8  */
+  gpio_map[DPAD_LEFT]   = LF3000_GPIO_PORT_E | 9;
+  gpio_map[HEADPHONE_JACK] = LF3000_GPIO_PORT_E | 10;
+        gpio_map[CHG_INT]        = LF3000_GPIO_PORT_E | 11;
+        /* N/C           - pin E12 */
+        /* N/C           - pin E13 */
+  /* SCK_R         - pin E14 */
+  gpio_map[LCD_SPI]               = LF3000_GPIO_PORT_E | 15;//FIXME it is supposed to be LCD_SCS_L(same?)
+
+        /* N/C           - pin E16 */
+        /* N/C           - pin E17 */
+        /* N/C           - pin E18 */
+        /* SDI           - pin E19 */
+  gpio_map[BUTTON_ESC]             = LF3000_GPIO_PORT_E | 20;
+  gpio_map[DPAD_DOWN]               = LF3000_GPIO_PORT_E | 21;
+  gpio_map[LED_ENA]                 = LF3000_GPIO_PORT_E | 22;
+  gpio_map[DPAD_RIGHT]              = LF3000_GPIO_PORT_E | 23;
+  gpio_map[DPAD_UP]                 = LF3000_GPIO_PORT_E | 24;
+        /* JTAG_TRST_L   - pin E25 */
+        /* JTAG_TMS      - pin E26 */
+        /* JTAG_TDI      - pin E27 */
+        /* JTAG_TCK      - pin E28 */
+        /* JTAG_TDO      - pin E29 */
+
+  gpio_map[USBD_ID_SENSE]             = LF3000_GPIO_PORT_E | 30; //FIXME-it is supposed tobe USB_OTG_ID .. verify
+  gpio_map[USB_POWER_FLT_L]           = LF3000_GPIO_PORT_E | 31; //FIXME-it s supposed to be USB_PWR_OK_L.. verify
+
+        /* GPIO Port ALIVE */
+        /* N/C        -  pin 0 */
+        /* N/C        -  pin 1 */
+        /* N/C        -  pin 2 */
+        /* N/C        -  pin 3 */
+        /* N/C        -  pin 4 */
+        /* N/C        -  pin 5 */
+        /* N/C        -  pin 6 */
+        /* N/C        -  pin 7 */
+} /* init_quito() */
+
+
 int lf3000_gpio_map_valid = 0;
 
 void lf3000_gpio_init_map(void)
@@ -1091,6 +1299,9 @@ void lf3000_gpio_init_map(void)
 		case LF3000_BOARD_BOGOTA_EXP_1:
 		case LF3000_BOARD_BOGOTA_EXP_2:
 		case LF3000_BOARD_BOGOTA_EXP_3:
+		case LF3000_BOARD_BOGOTA_EXP_4:
+		case LF3000_BOARD_BOGOTA_EXP_5:
+		case LF3000_BOARD_BOGOTA_EXP_6:
 			init_bogota();
 			break;
 			
@@ -1127,6 +1338,9 @@ void lf3000_gpio_init_map(void)
 			init_xanadu();
 			break;
 			
+    case LF3000_BOARD_QUITO:
+      init_quito();
+      break;
 
  		default:
 			printk(KERN_ERR "%s GPIO mapping does not support " \
@@ -1150,6 +1364,9 @@ void lf3000_gpio_init_map(void)
 #elif defined(CONFIG_PLAT_NXP4330_XANADU)
 			printk(KERN_WARNING "defaulting to XANADU GPIO mapping\n");
 			init_xanadu();
+#elif defined(CONFIG_PLAT_NXP4330_QUITO)
+      printk(KERN_WARNING "defaulting to QUITO GPIO mapping\n");
+      init_quito();
 #else
 #error CONFIG_PLAT not set
 #endif

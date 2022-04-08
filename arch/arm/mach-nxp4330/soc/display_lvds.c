@@ -26,6 +26,8 @@
 
 #include <mach/devices.h>
 #include <mach/soc.h>
+#include <mach/board_revisions.h>
+#include <asm/system.h>
 #include "display_4330.h"
 
 #if (0)
@@ -90,7 +92,13 @@ static int  lvds_prepare(struct disp_process_dev *pdev)
 				   pdev->dev_in == DISP_DEVICE_RESCONV, -EINVAL);
 
 	if (plvds)
-		format = plvds->lcd_format;
+        {
+            if(system_rev == LF3000_BOARD_BOGOTA_EXP_2) 
+	        format = plvds->lcd_format;
+            else
+		format = LVDS_LCDFORMAT_VESA; // Use Vesa for board ids other than 502
+        }
+
 
 	DBGOUT("%s: [%d]=%s, in[%d]=%s, %s\n",
 		__func__, pdev->dev_id, dev_to_str(pdev->dev_id), input, dev_to_str(input),
@@ -121,7 +129,9 @@ static int  lvds_prepare(struct disp_process_dev *pdev)
 	 * select TOP MUX
 	 */
 	NX_DISPTOP_CLKGEN_SetClockPClkMode(clkid, NX_PCLKMODE_ALWAYS);
+#if !defined(CONFIG_NXP4330_LEAPFROG)
 	NX_DISPTOP_CLKGEN_SetClockDivisorEnable (clkid, CFALSE);
+#endif
 	NX_DISPTOP_CLKGEN_SetClockSource (clkid, 0, psync->clk_src_lv0);
 	NX_DISPTOP_CLKGEN_SetClockDivisor(clkid, 0, psync->clk_div_lv0);
 	NX_DISPTOP_CLKGEN_SetClockSource (clkid, 1, psync->clk_src_lv1);  // CLKSRC_PLL0
@@ -246,8 +256,9 @@ static int  lvds_enable(struct disp_process_dev *pdev, int enable)
   		NX_DISPTOP_CLKGEN_SetClockDivisorEnable(clkid, CFALSE);
   		pdev->status &= ~PROC_STATUS_ENABLE;
 	} else {
+#if !defined(CONFIG_NXP4330_LEAPFROG)
         nxp_soc_rsc_enter(rstn);	/* power down */
-
+#endif
 		/* prepare */
 		lvds_prepare(pdev);
 

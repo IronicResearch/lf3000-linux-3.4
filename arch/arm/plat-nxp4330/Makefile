@@ -63,6 +63,14 @@ ifeq ($(CONFIG_PLAT_NXP4330_GLASGOW),y)
 PLATBOARD :=glasgow
 endif
 
+ifeq ($(CONFIG_PLAT_NXP4330_CABO),y)
+PLATBOARD :=cabo
+endif
+
+ifeq ($(CONFIG_PLAT_NXP4330_QUITO),y)
+PLATBOARD :=quito
+endif
+
 #
 # Build options
 #

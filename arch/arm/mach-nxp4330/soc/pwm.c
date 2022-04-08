@@ -189,7 +189,14 @@ static inline void pwm_stop(int ch, int irqon)
 
 static void pwm_set_device(struct pwm_device *pwm)
 {
+#ifdef CONFIG_NXP4330_LEAPFROG
+	int ch = pwm->ch;	/* PWM channel to use */
+	int tmux = 0;		/* hard-code divisor to be 1/1 */
+	int tscl = 1;		/* hard-code 8-bit prescaler to be 1 */
+#else
 	int ch = pwm->ch, tmux = 5, tscl = 1;
+#endif
+
 	pr_debug("%s (ch:%d, rate:%ld, count:%d, cmp:%d)\n",
 	 	__func__, ch, pwm->rate, pwm->counter, pwm->compare);
 
@@ -300,6 +307,7 @@ unsigned long nxp_soc_pwm_set_frequency(int ch, unsigned int request, unsigned i
         printk("%s: can't find clock!!!\n", __func__);
     }
 
+	printk(KERN_INFO "\npwm:  ch:%u, rate: %u, pwm_hz:%u\n", pwm->ch, pwm->rate, pwm->pwm_hz);
 	return clock ? pwm->pwm_hz : 0;
 }
 EXPORT_SYMBOL_GPL(nxp_soc_pwm_set_frequency);
@@ -341,6 +349,19 @@ static ssize_t pwm_show(struct device *dev,
 	c  = &at->name[strlen("pwm.")];
 	ch = simple_strtoul(c, NULL, 10);
 	pwm = &devs_pwm[ch];
+
+	/* dump register contents */
+	s += sprintf(s, "TCFG0      (0xC0018000): 0x%8.8X\n", readl(IO_ADDRESS(0xC0018000)));
+	s += sprintf(s, "TCFG1      (0xC0018004): 0x%8.8X\n", readl(IO_ADDRESS(0xC0018004)));
+	s += sprintf(s, "TCON       (0xC0018008): 0x%8.8X\n", readl(IO_ADDRESS(0xC0018008)));
+
+	s += sprintf(s, "TCNTB0     (0xC001800C): 0x%8.8X\n", readl(IO_ADDRESS(0xC001800C)));
+	s += sprintf(s, "TCMPB0     (0xC0018010): 0x%8.8X\n", readl(IO_ADDRESS(0xC0018010)));
+	s += sprintf(s, "TCNTO0     (0xC0018014): 0x%8.8X\n", readl(IO_ADDRESS(0xC0018014)));
+	s += sprintf(s, "TINT_CSTAT (0xC0018044): 0x%8.8X\n", readl(IO_ADDRESS(0xC0018044)));
+
+	s += sprintf(s, "CLKGEN13   (0xC00BA000): 0x%8.8X\n", readl(IO_ADDRESS(0xC00BA000)));
+	s += sprintf(s, "CLKGEN0L   (0xC00BA004): 0x%8.8X\n", readl(IO_ADDRESS(0xC00BA004)));
 
 	s += sprintf(s, "%ld,%d%% (%u,%u)\n", pwm->pwm_hz, pwm->duty, pwm->counter, pwm->compare);
 	if (s != buf)

@@ -13,6 +13,7 @@ enum lf2000_leapfrog_platform
 	GLASGOW,
 	XANADU,
 	BOGOTA,
+	QUITO,
 };
 
 bool is_board_lucy(void);

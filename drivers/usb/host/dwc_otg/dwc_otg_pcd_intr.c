@@ -914,7 +914,7 @@ int32_t dwc_otg_pcd_handle_usb_reset_intr(dwc_otg_pcd_t * pcd)
 
 	core_if->lx_state = DWC_OTG_L0;
 
-	DWC_PRINTF("USB RESET\n");
+	DWC_PRINTF(KERN_NOTICE "USB RESET\n");
 #ifdef CONFIG_PLAT_NXP4330_GLASGOW_ALPHA
 	mod_timer( &(pcd->conn_state_timer), jiffies + msecs_to_jiffies(100) );
 #endif

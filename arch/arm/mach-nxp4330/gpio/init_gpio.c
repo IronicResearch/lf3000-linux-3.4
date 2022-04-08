@@ -109,6 +109,9 @@ static void bd_gpio_init(void)
 	case LF3000_BOARD_BOGOTA_EXP_1:
 	case LF3000_BOARD_BOGOTA_EXP_2:
 	case LF3000_BOARD_BOGOTA_EXP_3:
+	case LF3000_BOARD_BOGOTA_EXP_4:
+	case LF3000_BOARD_BOGOTA_EXP_5:
+	case LF3000_BOARD_BOGOTA_EXP_6:
 		p_io_pad = &io_pad_bogota_alpha;
 		break;
 
@@ -144,6 +147,10 @@ static void bd_gpio_init(void)
 		p_io_pad = &io_pad_r3k;
 		break;
 
+  case LF3000_BOARD_QUITO:
+    p_io_pad = &io_pad_quito_alpha;
+    break;
+
 	default:
 #if   defined(CONFIG_PLAT_NXP4330_BOGOTA)
 		p_io_pad = &io_pad_bogota_alpha;
@@ -155,6 +162,8 @@ static void bd_gpio_init(void)
 		p_io_pad = &io_pad_r3k;
 #elif defined(CONFIG_PLAT_NXP4330_XANADU)
 		p_io_pad = &io_pad_xanadu_alpha;
+#elif defined(CONFIG_PLAT_NXP4330_QUITO)
+    p_io_pad = &io_pad_quito_alpha;
 #endif
 		break;
 	}
@@ -195,7 +204,7 @@ static void bd_gpio_init(void)
 			NX_GPIO_SetOutputEnable(index, bit, (out ? CTRUE : CFALSE));
 			NX_GPIO_SetOutputValue(index, bit,  (lv  ? CTRUE : CFALSE));
 			NX_GPIO_SetInterruptMode(index, bit, (lv));
-			NX_GPIO_SetPullUpEnable(index, bit, (plup ? CTRUE : CFALSE));
+			NX_GPIO_SetPullMode(index, bit, plup);
 			set_gpio_strength(index, bit, stren); /* pad strength */
 		}
 	}
@@ -215,6 +224,9 @@ static void bd_alive_init(void)
 	case LF3000_BOARD_BOGOTA_EXP_1:
 	case LF3000_BOARD_BOGOTA_EXP_2:
 	case LF3000_BOARD_BOGOTA_EXP_3:
+	case LF3000_BOARD_BOGOTA_EXP_4:
+	case LF3000_BOARD_BOGOTA_EXP_5:
+	case LF3000_BOARD_BOGOTA_EXP_6:
 		p_alv_pad = &alv_pad_bogota_alpha;
 		break;
 
@@ -250,6 +262,10 @@ static void bd_alive_init(void)
 		p_alv_pad = &alv_pad_xanadu_alpha;
 		break;
 
+  case LF3000_BOARD_QUITO:
+    p_alv_pad = &alv_pad_quito_alpha;
+    break;
+
 	default:
 #if    defined(CONFIG_PLAT_NXP4330_BOGOTA)
 		p_alv_pad = &alv_pad_bogota_alpha;
@@ -261,6 +277,8 @@ static void bd_alive_init(void)
 		p_alv_pad = &alv_pad_r3k;
 #elif  defined(CONFIG_PLAT_NXP4330_XANADU)
 		p_alv_pad = &alv_pad_xanadu_alpha;
+#elif  defined(CONFIG_PLAT_NXP4330_QUITO)
+        p_alv_pad = &alv_pad_quito_alpha;
 #endif
 		break;
 	}

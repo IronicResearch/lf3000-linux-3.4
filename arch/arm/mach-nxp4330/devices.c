@@ -34,6 +34,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/pm_runtime.h>
+#include <asm/setup.h>
 
 /* nexell soc headers */
 #include <mach/platform.h>
@@ -352,7 +353,6 @@ static struct i2c_gpio_platform_data nxp_i2c_gpio_port2 = {
 	.sda_pin	= I2C2_SDA,
 	.scl_pin	= I2C2_SCL,
 	.udelay		= I2CUDELAY(CFG_I2C2_CLK),				/* Gpio_mode CLK Rate = 1/( udelay*2) * 1000000 */
-
 	.timeout	= 10,
 };
 
@@ -592,18 +592,10 @@ static struct platform_device *gpio_devices[] = {
 #define MALI_GPU_NAME_UTGARD "mali-utgard"
 #endif
 
-#define VR_MEM_SIZE_DEFAULT CFG_MEM_PHY_SYSTEM_SIZE
-#if defined( CFG_MEM_PHY_DMAZONE_SIZE )
-#define VR_MEM_SIZE 	(VR_MEM_SIZE_DEFAULT + CFG_MEM_PHY_DMAZONE_SIZE)
-#endif
-#if defined( CONFIG_ION_NXP_CONTIGHEAP_SIZE )
-#define VR_MEM_SIZE 	(VR_MEM_SIZE_DEFAULT - (CONFIG_ION_NXP_CONTIGHEAP_SIZE * 1024))
-#endif
-
 #define NXP4330_DTK_3D_IRQ     			(40)
 static struct vr_gpu_device_data vr_gpu_data =
 {
-	.shared_mem_size = VR_MEM_SIZE,
+
 #if 0
 	.dedicated_mem_start = 0x5B400000, /* Reserved for graphic */
 	.dedicated_mem_size = 0x04C00000, /* 76MB */
@@ -614,7 +606,7 @@ static struct vr_gpu_device_data vr_gpu_data =
 	.utilization_interval = 1000, /* ms */
 	.utilization_handler =
 #endif
-	/* PMU power domain confituration */
+	/* PMU power domain configuration */
 	/* Mali Dynamic power domain configuration in sequence from 0-11
 	 *  GP  PP0 PP1  PP2  PP3  PP4  PP5  PP6  PP7, L2$0 L2$1 L2$2
 	 */
@@ -807,46 +799,6 @@ void bcm_wlan_power_off(int param)
 EXPORT_SYMBOL(bcm_wlan_power_off);
 
 #endif	//BCM43143
-
-/*------------------------------------------------------------------------------
- * TI WIFI module
- */
-#if defined(CONFIG_WL12XX_PLATFORM_DATA)	
- 
-struct wl12xx_platform_data nxp4430_wlan_data;
-#if 1
-static void wl_set_power(u32 slot_id, u32 on)
-{
-	if (on) {
-		printk("WIFI_RESET: ON\n");
-		gpio_set_value(WIFI_RESET, 1);
-		mdelay(70);
-	}
-	else
-	{
-		printk("WIFI_RESET: OFF\n");
-		gpio_set_value(WIFI_RESET, 0);
-	}
-}
-#endif
-
-static void wl12xx_init()
-{
-	struct device *dev;
-	struct omap_mmc_platform_data *pdata;
-
-	nxp4430_wlan_data.irq = gpio_to_irq(WIFI_HOST_WAKE);
-	nxp4430_wlan_data.platform_quirks = WL12XX_PLATFORM_QUIRK_EDGE_IRQ;
-	if(wl12xx_set_platform_data(&nxp4430_wlan_data))
-		pr_err("error setting wl12xx data\n");
-
-	_dwmci2_data.setpower = wl_set_power;
-
-
-	return;
-}
-
-#endif
 
 /*------------------------------------------------------------------------------
  * SSP/SPI
@@ -1081,7 +1033,7 @@ struct platform_device nxp4330_device_ohci = {
 
 void otg_clk_enable(void)
 {
-#if 0
+#if 1	/* Saw "Incomplete transfer" warnings when this is disabled */
     struct clk *hsotg_clk;
 
     // Clock control
@@ -1094,7 +1046,7 @@ EXPORT_SYMBOL(otg_clk_enable);
 
 void otg_clk_disable(void)
 {
-#if 0
+#if 1	/* Saw "Incomplete transfer" warnings when this is disabled */
     struct clk *hsotg_clk;
 
     // Clock control
@@ -1110,9 +1062,9 @@ void otg_phy_init(void)
 {
     u32 temp;
 
-    PM_DBGOUT("+%s\n", __func__);
+    //PM_DBGOUT("+%s\n", __func__);
 
-    writel(readl(SOC_VA_RSTCON + 0x3C) & ~0xF800, SOC_VA_RSTCON + 0x3C);
+    //writel(readl(SOC_VA_RSTCON + 0x3C) & ~0xF800, SOC_VA_RSTCON + 0x3C);
 
     // 1. Release otg common reset
     writel(readl(SOC_VA_RSTCON + 0x04) & ~(1<<25), SOC_VA_RSTCON + 0x04);     // reset on
@@ -1123,7 +1075,10 @@ void otg_phy_init(void)
     // 1-1. VBUS reconfig - Over current Issue
 #if 1
     temp  = readl(SOC_VA_TIEOFF + 0x38) & ~(0x7<<23);
-    temp |= (0x3<<23);
+//    temp |= (0x3<<23); // -3%
+//    temp |= (0x2<<23); // -6%
+//    temp |= (0x1<<23); // -9%
+    temp |= (0x0<<23); // -12%
     writel(temp, SOC_VA_TIEOFF + 0x38);
 #endif
 
@@ -1158,15 +1113,30 @@ void otg_phy_init(void)
     temp   &= ~(2<<7);
     writel(temp, SOC_VA_TIEOFF + 0x34);
 #endif
-    udelay(10); // 40us delay need.
+    udelay(40); // 40us delay need.
 
     // 6. UTMI reset
     writel(readl(SOC_VA_TIEOFF + 0x34) | (1<<3), SOC_VA_TIEOFF + 0x34);
-    udelay(1);  // 10 clock need
+    udelay(10);  // 10 clock need
 
     // 7. AHB reset
     writel(readl(SOC_VA_TIEOFF + 0x34) | (1<<2), SOC_VA_TIEOFF + 0x34);
-    udelay(1);  // 10 clock need
+    udelay(10);  // 10 clock need
+
+#if 0
+    if (GLASGOW == get_leapfrog_platform()) {
+        // FIXME: adjust rise time for optimum eye-test result
+        temp = readl(SOC_VA_TIEOFF + 0x28);
+        temp &= ~(0x3 << 4);
+        writel(temp, SOC_VA_TIEOFF + 0x28);
+    }
+#endif
+
+    printk("%s: %08x : %08x \n", __func__, SOC_VA_TIEOFF + 0x28, readl(SOC_VA_TIEOFF + 0x28));
+    printk("%s: %08x : %08x \n", __func__, SOC_VA_TIEOFF + 0x2C, readl(SOC_VA_TIEOFF + 0x2C));
+    printk("%s: %08x : %08x \n", __func__, SOC_VA_TIEOFF + 0x30, readl(SOC_VA_TIEOFF + 0x30));
+    printk("%s: %08x : %08x \n", __func__, SOC_VA_TIEOFF + 0x34, readl(SOC_VA_TIEOFF + 0x34));
+    printk("%s: %08x : %08x \n", __func__, SOC_VA_TIEOFF + 0x38, readl(SOC_VA_TIEOFF + 0x38));
 }
 EXPORT_SYMBOL(otg_phy_init);
 
@@ -1567,20 +1537,45 @@ void __init nxp_cpu_devices_register(void)
 	gpio_request(WIFI_RESET, "Wi-Fi reset");
 #endif
 
+#ifdef CONFIG_VIDEO_HI253
+	
+	/*adding gpio requests here so that we don't get warnings during camera enable later.
+	 * These warnings are expensive and cause i2c errors on camera.
+	 * These warnings are generated due to change in GPIO direction for camera enable and disable.
+	 */
+	gpio_request(FRONT_CAM_ENABLE_L, "FRONT_CAM_ENABLE_L");
+	gpio_request(REAR_CAM_ENABLE_L, "REAR_CAM_ENABLE_L");
+
+#endif
+
+#ifdef CONFIG_VIDEO_HM2056  
+	gpio_request(FRONT_CAM_ENABLE_L, "FRONT_CAM_ENABLE_L");
+	gpio_request(REAR_CAM_ENABLE_L, "REAR_CAM_ENABLE_L");
+#endif
+
+#ifdef CONFIG_VIDEO_HI253_HM2056  
+	gpio_request(FRONT_CAM_ENABLE_L, "FRONT_CAM_ENABLE_L");
+	gpio_request(REAR_CAM_ENABLE_L, "REAR_CAM_ENABLE_L");
+#endif
+
 #if defined(CONFIG_NXP_ADC)
     printk("mach: add device adc\n");
     platform_device_register(&adc_device);
 #endif
     /* Register the platform devices */
     printk("mach: add graphic device opengl|es\n");
+
+extern struct meminfo meminfo;
+#if defined( CONFIG_ION_NXP_CONTIGHEAP_SIZE )
+    ((struct vr_gpu_device_data *)vr_gpu_device.dev.platform_data)->shared_mem_size =
+		(meminfo.bank[0].size  - (CONFIG_ION_NXP_CONTIGHEAP_SIZE * SZ_1K));
+#else
+	((struct vr_gpu_device_data *)vr_gpu_device.dev.platform_data)->shared_mem_size =
+			meminfo->bank[0].size;
+#endif
+
     platform_device_register(&vr_gpu_device);
 
-#if defined(CONFIG_WL12XX_PLATFORM_DATA)
-	wl12xx_init();
-	//i = gpio_request_one(BT_RESET_L, GPIOF_INIT_HIGH, "Bluetooth Reset");
-	//if (!i)
-		//printk("mach: BT Reset %d %d \n", i, gpio_get_value_cansleep(BT_RESET_L));
-#endif
 #if defined(CONFIG_NXP4330_WATCHDOG)
     printk("mach: add device watchdog\n");
     platform_device_register(&nxp_device_wdt);

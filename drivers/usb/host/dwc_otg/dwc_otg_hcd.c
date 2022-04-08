@@ -59,10 +59,12 @@ static int last_sel_trans_num_avail_hc_at_end = 0;
 
 extern int g_next_sched_frame, g_np_count, g_np_sent;
 
+#if 0
 extern haint_data_t haint_saved;
 extern hcintmsk_data_t hcintmsk_saved[MAX_EPS_CHANNELS];
 extern hcint_data_t hcint_saved[MAX_EPS_CHANNELS];
 extern gintsts_data_t ginsts_saved;
+#endif
 
 /* Hack-o-rama.
  * This are functions to allow the HCD driver to post Linux input events.

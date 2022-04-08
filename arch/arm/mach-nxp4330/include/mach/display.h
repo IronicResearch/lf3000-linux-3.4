@@ -234,6 +234,7 @@ struct mlc_layer_info {
 			unsigned int transcolor;
 			unsigned int invertcolor;
 			unsigned int alphablend;
+			unsigned int alphaenable;
 		};
 		struct {
 			int		alpha;			/* Default= 15,    0 <= Range <= 16		*/

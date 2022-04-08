@@ -16,6 +16,17 @@
 /* Hysteresis low to normal Battery */
 #define NORMAL_BATTERY_MV   (LOW_BATTERY_MV + 200)
 
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA //Bogota
+//Math - values used for battery percentage calculation
+#define ALPHA_DIV	32 //96 samples for 95% convergence: a 0.1 Hz, 16 minutes.
+#define SCALE	128
+
+#define	BATTERY_0	3554
+#define	BATTERY_25	3687
+#define	BATTERY_50	3750
+#define	BATTERY_75	4015
+#endif
+
 #else
 /* default values */
 #define MAX_BATTERY_MV	8000		/* max expected battery value	*/

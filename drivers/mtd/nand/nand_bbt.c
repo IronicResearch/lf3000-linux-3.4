@@ -499,6 +499,7 @@ static int create_bbt(struct mtd_info *mtd, uint8_t *buf,
 
 	orgfrom = from;
 
+#if 0 // Disable this for Cartridge since carts are mounted a RO and we won't fix the bad blocks
 	do {
 		for (i = startblock; i < numblocks; i++) {
 			int ret;
@@ -527,6 +528,7 @@ static int create_bbt(struct mtd_info *mtd, uint8_t *buf,
 		from = orgfrom + (mtd->erasesize - (mtd->writesize * numpages));
 		is_last = 1;
 	} while (count-- > 0);
+#endif
 
 	return 0;
 }

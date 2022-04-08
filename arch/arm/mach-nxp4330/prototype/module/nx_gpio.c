@@ -14,6 +14,7 @@
 //	History		:
 //------------------------------------------------------------------------------
 
+#include <linux/kernel.h>
 #include "nx_gpio.h"
 
 //U32 __g_NX_GPIO_VALID_BIT[NUMBER_OF_GPIO_MODULE] = {
@@ -1185,29 +1186,50 @@ U32		NX_GPIO_GetPullSelect32 ( U32 ModuleIndex )
 	return __g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL;
 }
 
+NX_GPIO_PADPULL	NX_GPIO_GetPullMode ( U32 ModuleIndex, U32 BitNumber )
+{
+	NX_ASSERT( NUMBER_OF_GPIO_MODULE > ModuleIndex );
+	NX_ASSERT( CNULL != __g_ModuleVariables[ModuleIndex].pRegister );
+
+	/* if not Enabled then return 'OFF' */
+	if ( (NX_GPIO_GetBit( __g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL_DISABLE_DEFAULT, BitNumber) == CFALSE) ||
+	     (NX_GPIO_GetBit( __g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB_DISABLE_DEFAULT, BitNumber) == CFALSE) ||
+	     (NX_GPIO_GetBit( __g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB, BitNumber)                 == CFALSE) ) {
+		return NX_GPIO_PADPULL_OFF;
+	}
+
+	/* enabled, is UP or DOWN selected ? */
+	if (NX_GPIO_GetBit( __g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL, BitNumber) == CFALSE) {
+		return NX_GPIO_PADPULL_DN;
+	} else {
+		return NX_GPIO_PADPULL_UP;
+	}
+}
+
 void	NX_GPIO_SetPullMode ( U32 ModuleIndex, U32 BitNumber, NX_GPIO_PADPULL mode)
 {
 	NX_ASSERT( NUMBER_OF_GPIO_MODULE > ModuleIndex );
-	NX_ASSERT( (0==mode) || (1==mode) || (2==mode) );
+	NX_ASSERT( (NX_GPIO_PADPULL_DN==mode) || (NX_GPIO_PADPULL_UP==mode) || (NX_GPIO_PADPULL_OFF==mode) );
 	NX_ASSERT( CNULL != __g_ModuleVariables[ModuleIndex].pRegister );
 
 	NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL_DISABLE_DEFAULT, BitNumber, CTRUE );
 	NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB_DISABLE_DEFAULT, BitNumber, CTRUE );
 
-	if (mode == NX_GPIO_PADPULL_OFF)
-	{
-//NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB_DISABLE_DEFAULT, BitNumber, CFALSE );
-
-		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB, BitNumber, CFALSE );
+	switch(mode) {
+	case NX_GPIO_PADPULL_DN:
 		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL, BitNumber, CFALSE );
+		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB, BitNumber, CTRUE  );
+		break;
+	case NX_GPIO_PADPULL_UP:
+		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL, BitNumber, CTRUE  );
+		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB, BitNumber, CTRUE  );
+		break;
+	case NX_GPIO_PADPULL_OFF:
+		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL, BitNumber, CFALSE );
+		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB, BitNumber, CFALSE );
+		break;
 	}
-	else
-	{
-//NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB_DISABLE_DEFAULT, BitNumber, CTRUE );
 
-		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLSEL, BitNumber, (mode & 1 ? CTRUE : CFALSE) );
-		NX_GPIO_SetBit( &__g_ModuleVariables[ModuleIndex].pRegister->GPIOx_PULLENB, BitNumber, CTRUE );
-	}
 }
 
 //------------------------------------------------------------------------------

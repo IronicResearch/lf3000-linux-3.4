@@ -144,7 +144,7 @@ struct region_info_user {
  * we need to switch back to u32 even in this case. 
  * /
 //	__u32 offset;		/* At which this region starts,
-//				 * from the beginning of the MTD */
+				 * from the beginning of the MTD */
 	__u64 offset;		/* freestyle: At which this region starts, */
 	__u32 erasesize;	/* For this region */
 	__u32 numblocks;	/* Number of blocks in this region */

@@ -112,12 +112,10 @@ U32		NX_SSP_GetSizeOfRegisterSet( void )
  */
 void	NX_SSP_SetBaseAddress( U32 ModuleIndex, U32 BaseAddress )
 {
-	static const U32 PhysicalAddr[] = { PHY_BASEADDR_LIST( SSP ) }; // PHY_BASEADDR_UART?_MODULE
-
 	NX_ASSERT( CNULL != BaseAddress );
 	NX_ASSERT( NUMBER_OF_SSP_MODULE > ModuleIndex );
 
-	__g_ModuleVariables[ModuleIndex].pRegister = (struct NX_SSP_RegisterSet *)PhysicalAddr[ModuleIndex];
+	__g_ModuleVariables[ModuleIndex].pRegister = (struct NX_SSP_RegisterSet *)BaseAddress;
 }
 
 //------------------------------------------------------------------------------
@@ -1282,8 +1280,8 @@ NX_SSP_FORMAT	NX_SSP_GetSPIFormat( U32 ModuleIndex )
  *	@param[in]	ModuleIndex		an index of module.
  *	@param[in]	Phase			1 or 0
  				SPH = 1 or 0
- 				SPH = 0 : LF2000ÀÇ Format A
- 				SPH = 1 : LF2000ÀÇ Format B
+ 				SPH = 0 : LF2000ï¿½ï¿½ Format A
+ 				SPH = 1 : LF2000ï¿½ï¿½ Format B
  *	@return		None.
  *	@see		SSPCR0, 2-12
  */
@@ -1324,8 +1322,8 @@ void			NX_SSP_SetClockPhase( U32 ModuleIndex, U32	Phase )
  *	@param[in]	ModuleIndex		an index of module.
 
  *	@return		SPH = 1 or 0
- 				SPH = 0 : LF2000ÀÇ Format A
- 				SPH = 1 : LF2000ÀÇ Format B
+ 				SPH = 0 : LF2000ï¿½ï¿½ Format A
+ 				SPH = 1 : LF2000ï¿½ï¿½ Format B
  *	@see		SSPCR0, 2-12
  */
 U32				NX_SSP_GetClockPhase( U32 ModuleIndex )
@@ -1366,7 +1364,7 @@ U32				NX_SSP_GetClockPhase( U32 ModuleIndex )
  				NX_SSP_PROTOCOL_SPI = 0x00, TI SPI frame format*
  				NX_SSP_PROTOCOL_SSP = 0x01, Motorola SSP frame format
  				NX_SSP_PROTOCOL_NM  = 0x02, National Microwire frame format
- 				( NMÀº Áö¿øÀº ÇÑ´Ù°í ÇÏ´Âµ¥ Å×½ºÆ®´Â ¾î¶»°Ô ÇØ¾ßÇÒÁö.. )
+ 				( NMï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´Ù°ï¿½ ï¿½Ï´Âµï¿½ ï¿½×½ï¿½Æ®ï¿½ï¿½ ï¿½î¶»ï¿½ï¿½ ï¿½Ø¾ï¿½ï¿½ï¿½ï¿½ï¿½.. )
  *	@return		None.
  *	@see		SSPCR0
  */
@@ -1397,7 +1395,7 @@ void	NX_SSP_SetProtocol( U32 ModuleIndex, NX_SSP_PROTOCOL protocol )
  *				NX_SSP_PROTOCOL_SSP = 0x00, Motorola SSP frame format
  				NX_SSP_PROTOCOL_SPI = 0x01, TI SPI frame format
  				NX_SSP_PROTOCOL_NM  = 0x02, National Microwire frame format
- 				( NMÀº Áö¿øÀº ÇÑ´Ù°í ÇÏ´Âµ¥ Å×½ºÆ®´Â ¾î¶»°Ô ÇØ¾ßÇÒÁö.. )
+ 				( NMï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´Ù°ï¿½ ï¿½Ï´Âµï¿½ ï¿½×½ï¿½Æ®ï¿½ï¿½ ï¿½î¶»ï¿½ï¿½ ï¿½Ø¾ï¿½ï¿½ï¿½ï¿½ï¿½.. )
  *	@see		SSPCR0
  */
 NX_SSP_PROTOCOL	NX_SSP_GetProtocol( U32 ModuleIndex )
@@ -1485,8 +1483,8 @@ CBOOL	NX_SSP_GetEnable( U32 ModuleIndex )
 //------------------------------------------------------------------------------
 /**
  *	@brief		Read Byte Data.
- *				pl02212´Â 4~16bit°¡ °¡´ÉÇÑµ¥.. ¹«Á¶°Ç 8 bit¸¦ ÀÐ¾î¿À´Â°ÍÀÌ Á¤´çÇÒÁö..
- *				GetData( U32 ModuleIndex, U32 DataWidth ) ¸¦ »ç¿ëÇÏµµ·Ï ±ÇÀå.
+ *				pl02212ï¿½ï¿½ 4~16bitï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñµï¿½.. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 8 bitï¿½ï¿½ ï¿½Ð¾ï¿½ï¿½ï¿½Â°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½..
+ *				GetData( U32 ModuleIndex, U32 DataWidth ) ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
  *	@param[in]	ModuleIndex		an index of module.
  *	@return		Byte Data
  *	@see		SSPDR
@@ -1523,8 +1521,8 @@ U16		NX_SSP_GetHalfWord(U32 ModuleIndex)
 //------------------------------------------------------------------------------
 /**
  *	@brief		Send Byte.
- *				pl02212´Â 4~16bit°¡ °¡´ÉÇÑµ¥.. ¹«Á¶°Ç 8 bit¸¦ ÀÐ¾î¿À´Â°ÍÀÌ Á¤´çÇÒÁö..
- *				GetData( U32 ModuleIndex, U32 DataWidth ) ¸¦ »ç¿ëÇÏµµ·Ï ±ÇÀå.
+ *				pl02212ï¿½ï¿½ 4~16bitï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñµï¿½.. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 8 bitï¿½ï¿½ ï¿½Ð¾ï¿½ï¿½ï¿½Â°ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½..
+ *				GetData( U32 ModuleIndex, U32 DataWidth ) ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
  *	@param[in]	ModuleIndex		an index of module.
  *	@param[in]	ByteData		Value of Data ( 0x0 ~ 0xFF )
  *	@return		None.
@@ -1717,7 +1715,7 @@ CBOOL	NX_SSP_IsTxRxEnd( U32 ModuleIndex )
 }
 
 //------------------------------------------------------------------------------
-///	@name	Register Backup & Store Function [ÁÖÀÇ] ³»ºÎ¿¡¼­ ASSERT Á¦°ø ¾ÈÇÔ..
+///	@name	Register Backup & Store Function [ï¿½ï¿½ï¿½ï¿½] ï¿½ï¿½ï¿½Î¿ï¿½ï¿½ï¿½ ASSERT ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½..
 
 void	NX_SSP_Set_SSPCR0				( U32 ModuleIndex, U32 RegValue )
 {
@@ -1924,7 +1922,7 @@ U32		NX_SSP_Get_SSPCellID3			( U32 ModuleIndex )
 }
 
 
-//---------- CLKGEN À» À§ÇÑ prototype
+//---------- CLKGEN ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ prototype
 U32 NX_SSP_GetClockNumber (U32 ModuleIndex)
 {
     static const U32 CLKGEN_SSPLIST[] = { CLOCKINDEX_LIST( SSP ) };
@@ -1933,7 +1931,7 @@ U32 NX_SSP_GetClockNumber (U32 ModuleIndex)
     return (U32)CLKGEN_SSPLIST[ModuleIndex];
 }
 
-//---------- RSTCON À» À§ÇÑ prototype
+//---------- RSTCON ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ prototype
 U32	NX_SSP_GetResetNumber (U32 ModuleIndex, U32 ChannelIndex)
 {
     const U32 ResetPinNumber[2][NUMBER_OF_SSP_MODULE] =

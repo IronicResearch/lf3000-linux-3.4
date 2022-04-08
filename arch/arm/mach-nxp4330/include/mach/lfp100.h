@@ -173,8 +173,4 @@ unsigned int lfp100_is_usb_powered(void);
 void lfp100_backlight_off(void);
 unsigned char lfp100_get_pmic_rev(void);
 
-#if !defined(CONFIG_SOC_LFP100)
-#define	lfp100_have_lfp100()	( 0 )
-#endif
-
 #endif /* LFP100_H */

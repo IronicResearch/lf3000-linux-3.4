@@ -134,7 +134,7 @@ static inline double kcos(double radian)
 #define DEF_MLC_INTERLACE		CFALSE
 #define DEF_OUT_FORMAT			DPC_FORMAT_RGB888
 #define DEF_OUT_INVERT_FIELD	CFALSE
-#define DEF_OUT_SWAPRB			CFALSE
+#define DEF_OUT_SWAPRB			CFG_DISP_PRI_OUT_SWAPRB
 #define DEF_OUT_YCORDER			DPC_YCORDER_CbYCrY
 #define DEF_PADCLKSEL			DPC_PADCLKSEL_VCLK
 #define DEF_CLKGEN0_DELAY		0
@@ -587,9 +587,9 @@ static int  disp_syncgen_prepare(struct disp_control_info *info)
 	int module = info->module;
 	unsigned int out_format = psgen->out_format;
 	unsigned int delay_mask = psgen->delay_mask;
+	int 		 swap_RB    = psgen->swap_RB;
 #if 0
 	int 	   invert_field = psgen->invert_field;
-	int 		 swap_RB    = psgen->swap_RB;
 	unsigned int yc_order   = psgen->yc_order;
 #endif
 
@@ -682,7 +682,7 @@ static int  disp_syncgen_prepare(struct disp_control_info *info)
 	NX_DPC_SetDelay (module, rgb_pvd, hsync_cp1, vsync_fram, de_cp2);
  	NX_DPC_SetDither(module, RDither, GDither, BDither);
 #else
-    {
+    {		
         POLARITY FieldPolarity = POLARITY_ACTIVEHIGH;
         POLARITY HSyncPolarity = POLARITY_ACTIVEHIGH;
         POLARITY VSyncPolarity = POLARITY_ACTIVEHIGH;
@@ -703,7 +703,7 @@ static int  disp_syncgen_prepare(struct disp_control_info *info)
                 0, 0, 0, 0, 0, 0, 0); // EvenVSW, EvenVFP, EvenVBP, VSP, VCP, EvenVSP, EvenVCP
 
         NX_DPC_SetDelay (module, rgb_pvd, hsync_cp1, vsync_fram, de_cp2);
-        NX_DPC_SetOutputFormat(module, out_format, 0 );
+        NX_DPC_SetOutputFormat(module, out_format, 0, swap_RB );
         NX_DPC_SetDither(module, RDither, GDither, BDither);
         NX_DPC_SetQuantizationMode(module, QMODE_256, QMODE_256 );
     }
@@ -1058,7 +1058,7 @@ int  nxp_soc_disp_rgb_set_format(int module, int layer, unsigned int format,
 				int image_w, int image_h, int pixelbyte)
 {
 	DISP_MULTILY_RGB(module, prgb, layer);
-	CBOOL EnAlpha = CFALSE;
+	CBOOL EnAlpha = prgb->color.alphaenable;
 
 	DBGOUT("%s: %s, fmt:0x%x, w=%d, h=%d, bpp/8=%d\n",
 		__func__, prgb->name, format, image_w, image_h, pixelbyte);
@@ -1075,6 +1075,7 @@ int  nxp_soc_disp_rgb_set_format(int module, int layer, unsigned int format,
 	prgb->pixelbyte = pixelbyte;
 	prgb->clipped = 0;
 
+#if !defined(CONFIG_NXP4330_LEAPFROG)
 	/* set alphablend */
 	if (format == MLC_RGBFMT_A1R5G5B5 ||
 		format == MLC_RGBFMT_A1B5G5R5 ||
@@ -1085,6 +1086,7 @@ int  nxp_soc_disp_rgb_set_format(int module, int layer, unsigned int format,
 		format == MLC_RGBFMT_A8R8G8B8 ||
 		format == MLC_RGBFMT_A8B8G8R8)
 		EnAlpha = CTRUE;
+#endif
 
     /* psw0523 fix for video -> prgb setting ordering */
 	/* NX_MLC_SetTransparency(module, layer, CFALSE, prgb->color.transcolor); */
@@ -1229,7 +1231,8 @@ void  nxp_soc_disp_rgb_set_color(int module, int layer, unsigned int type,
 	case RGB_COLOR_ALPHA:
 		if (color <= 0 ) color = 0;
 		if (color >= 15) color = 15;
-		prgb->color.alpha = (enable?color:15);
+		prgb->color.alphablend = (enable?color:15);
+		prgb->color.alphaenable = enable;
 		NX_MLC_SetAlphaBlending(module, layer, (enable ? CTRUE : CFALSE), color);
 		NX_MLC_SetDirtyFlag(module, layer);
 		break;
@@ -1261,7 +1264,7 @@ unsigned int  nxp_soc_disp_rgb_get_color(int module, int layer, unsigned int typ
 	DISP_MULTILY_RGB(module, prgb, layer);
 
 	switch (type) {
-	case RGB_COLOR_ALPHA:	 return (unsigned int)prgb->color.alpha;
+	case RGB_COLOR_ALPHA:	 return (unsigned int)prgb->color.alphablend;
 	case RGB_COLOR_TRANSP: return (unsigned int)prgb->color.transcolor;
 	case RGB_COLOR_INVERT: return (unsigned int)prgb->color.invertcolor;
 	default: break;
@@ -2058,6 +2061,11 @@ int nxp_soc_disp_device_enable(enum disp_dev_type device, int enable)
 	 	info = get_device_to_info(ops->dev);
 	 	lcd = info->lcd_ops;
 
+#if defined(CONFIG_NEXELL_DISPLAY_LCD) || defined(CONFIG_NEXELL_DISPLAY_LVDS)
+		spi_lcd_init();
+		spi_lcd_setup();
+#endif
+
 		if (enable) {
 			if (no_prev(ops->dev) && lcd && lcd->lcd_poweron)
 				lcd->lcd_poweron(info->module, lcd->data);
@@ -2310,6 +2318,13 @@ void nxp_soc_disp_device_framebuffer(int module, int fb)
 	printk("display.%d connected to fb.%d  ...\n", module, fb);
 }
 
+void nxp_soc_disp_device_lcd_flip(int module, int flip)
+{
+#if defined(CONFIG_NEXELL_DISPLAY_LCD) || defined(CONFIG_NEXELL_DISPLAY_LVDS)
+	spi_lcd_flip(module, flip);
+#endif
+}
+
 /* TOP Layer */
 EXPORT_SYMBOL(nxp_soc_disp_get_resolution);
 EXPORT_SYMBOL(nxp_soc_disp_set_bg_color);
@@ -2371,6 +2386,7 @@ EXPORT_SYMBOL(nxp_soc_disp_device_reset_top);
 EXPORT_SYMBOL(nxp_soc_disp_register_lcd_ops);
 EXPORT_SYMBOL(nxp_soc_disp_register_proc_ops);
 EXPORT_SYMBOL(nxp_soc_disp_register_priv);
+EXPORT_SYMBOL(nxp_soc_disp_device_lcd_flip);
 
 /*
  * Notify vertical sync en/disable

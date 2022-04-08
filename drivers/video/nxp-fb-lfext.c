@@ -65,6 +65,11 @@ extern struct ion_device *get_global_ion_device(void);
 
 #define SUPPORT_ALTER_HARDWARE_STATE
 
+// FIXME: (RAlfaro) boot logo copying breaks kernel on the Cabo platform.
+// FIXME: QUITO may need this. Not sure what's broken in the first place.
+#if !defined(CONFIG_PLAT_NXP4330_CABO) && !defined(CONFIG_PLAT_NXP4330_QUITO)
+#define CONFIG_LOGO_NEXELL_COPY
+#endif
 
 #if (0)
 #define	DUMP_VAR_SCREENINFO
@@ -117,8 +122,10 @@ struct nxp_fb_device {
 	int			  lcd_h_mm;		/* hegiht  mm for dpi */
 	unsigned int  hs_left;
 	unsigned int  hs_right;
+	unsigned int  hs_sync;
 	unsigned int  vs_upper;
 	unsigned int  vs_lower;
+	unsigned int  vs_sync;
 	unsigned int  pixelclk;
 	/* frame buffer */
 	unsigned int  fb_phy_base;
@@ -179,7 +186,7 @@ static int nxp_fb_dev_get_vsync(int module, int fb, struct disp_vsync_info *vsi)
 	return 0;
 }
 
-static int nxp_fb_dev_setup(struct nxp_fb_param *par)
+static int nxp_fb_dev_setup(struct nxp_fb_param *par, bool init)
 {
 #ifdef CONFIG_NEXELL_DISPLAY
 	int module = par->fb_dev.device_id;
@@ -188,23 +195,52 @@ static int nxp_fb_dev_setup(struct nxp_fb_param *par)
 	int yres = par->fb_dev.y_resol;
 	int pixel = par->fb_dev.pixelbit >> 3;
 	u32 phys = par->fb_dev.fb_phy_base;
+	int enable = (init) ? 0 : nxp_soc_disp_rgb_stat_enable(module, layer);
 
 	if (-1 == module)
 		return 0;
 
 	if (IS_YUV_LAYER(layer)) {
+		int enable = (init) ? 0 : nxp_soc_disp_video_stat_enable(module);
 		nxp_soc_disp_video_set_format(module, par->fb_dev.format, xres, yres);
 		nxp_soc_disp_video_set_address(module, phys, 4096, phys+2048, 4096, phys+2048+4096*yres/2, 4096, 0);
 		nxp_soc_disp_video_set_position(module, 0, 0, xres, yres, 0);
 		nxp_soc_disp_video_set_priority(module, par->fb_dev.vid_layer);
-		nxp_soc_disp_video_set_enable(module, 0);
+		nxp_soc_disp_video_set_enable(module, enable);
+		return 0;
+	}
+
+	// Skip over bootloader image outside framebuffer region
+	if (init && layer == CFG_DISP_PRI_SCREEN_LAYER) {
+		int stride = xres * pixel;
+		u32 base = par->fb_dev.fb_phy_base;
+		struct fb_info* info = par->info;
+
+#if !defined(CONFIG_LOGO_NEXELL_COPY)
+		nxp_soc_disp_rgb_get_address(module, layer, &phys, &pixel, &stride);
+		printk(KERN_INFO "%s: layer %d: boot phys=%08x, fb base=%08x\n", __func__, layer, phys, par->fb_dev.fb_phy_base);
+
+		// Update framebuffer driver cache state
+		par->fb_dev.fb_pan_phys = phys; // nxp_fb_pan_display()
+		info->var.yoffset = (phys - base) / stride;
+		info->var.xoffset = ((phys - base) % stride) / pixel;
+		if (info->var.xoffset + info->var.xres > info->var.xres_virtual)
+			info->var.xoffset = info->var.xres_virtual - info->var.xres;
+		if (info->var.yoffset + info->var.yres > info->var.yres_virtual)
+			info->var.yoffset = info->var.yres_virtual - info->var.yres - 1;
+#endif
+		nxp_soc_disp_rgb_set_format(module, layer, par->fb_dev.format, xres, yres, pixel);
+		nxp_soc_disp_rgb_set_color(module, layer, RGB_COLOR_ALPHA, 15, 0); // alpha disable
+		nxp_soc_disp_rgb_set_address(module, layer, phys, pixel, xres*pixel, 0);
+		nxp_soc_disp_rgb_set_position(module, layer, 0, 0, 0);
+		nxp_soc_disp_rgb_set_enable(module, layer, 1);
 		return 0;
 	}
 
 	nxp_soc_disp_set_bg_color(module, par->fb_dev.bgcolor);
 	nxp_soc_disp_rgb_set_format(module, layer, par->fb_dev.format, xres, yres, pixel);
 	nxp_soc_disp_rgb_set_address(module, layer, phys, pixel, xres*pixel, 1);
-	nxp_soc_disp_rgb_set_enable(module, layer, 1);
+	nxp_soc_disp_rgb_set_enable(module, layer, enable);
 #endif
 	return 0;
 }
@@ -252,15 +288,10 @@ static void nxp_fb_dev_set_addr(struct nxp_fb_param *par, unsigned phys, int wai
 
 static int nxp_fb_dev_enable(struct nxp_fb_param *par, bool on, int force)
 {
-#if defined CONFIG_NEXELL_DISPLAY && !defined(CONFIG_LOGO_NEXELL_COPY)
+#if defined CONFIG_NEXELL_DISPLAY // && !defined(CONFIG_LOGO_NEXELL_COPY)
 	int module = par->fb_dev.device_id;
 	int layer  = par->fb_dev.layer;
 	int stat = 0;
-
-#if defined(CONFIG_NXP4330_LEAPFROG) && defined(CONFIG_PLAT_NXP4330_GLASGOW)
-	// FIXME
-	return 0;
-#endif
 
 	if (-1 == module)
 		return 0;
@@ -270,6 +301,9 @@ static int nxp_fb_dev_enable(struct nxp_fb_param *par, bool on, int force)
 
 	if (!force)
 		stat = nxp_soc_disp_device_stat_enable(DISP_DEVICE_SYNCGEN0 + module);
+
+	if (force && on)
+		nxp_soc_disp_wait_vertical_sync(module);
 
 	if (!stat)
 		nxp_soc_disp_device_enable_all(module, on ? 1: 0);
@@ -403,7 +437,7 @@ static void nxp_fb_copy_boot_logo(struct nxp_fb_param *par, int size)
 	}
 
  	if (phys && 0 == virt) {
-		printk("%s Fail boot logo copy from 0x%08x to 0x%08x (0x%08x)\n",
+		printk(KERN_ERR "%s Fail boot logo copy from 0x%08x to 0x%08x (0x%08x)\n",
 			__func__, phys, base, dest);
 		__memblock_dump_all();
 	}
@@ -418,13 +452,18 @@ nxp_fb_init_display(struct fb_info *info)
 	int xres   = info->var.xres;
 	int yres   = info->var.yres;
 	int pixel  = info->var.bits_per_pixel >> 3;
+	int layer  = par->fb_dev.layer;
 
 	nxp_fb_dev_set_layer(par);
 
 	#if defined(CONFIG_LOGO_NEXELL_COPY)
-	nxp_fb_copy_boot_logo(par, (xres * yres * pixel));
-	#elif defined(CONFIG_NXP4330_LEAPFROG)
-	// don't clear framebuffer memory
+	if (layer == CFG_DISP_PRI_SCREEN_LAYER) {
+		memset((void*)par->fb_dev.fb_vir_base, 0x00, par->fb_dev.fb_phy_len);
+		nxp_fb_copy_boot_logo(par, (xres * yres * pixel));
+	}
+	else if IS_YUV_LAYER(layer) {
+		memset((void*)par->fb_dev.fb_vir_base, 0x80, par->fb_dev.fb_phy_len);
+	}
 	#else
 	memset((void*)par->fb_dev.fb_vir_base,
 			FB_CLEAR_COLOR, par->fb_dev.fb_phy_len);
@@ -434,7 +473,7 @@ nxp_fb_init_display(struct fb_info *info)
 	nxp_fb_dev_enable(par, false, 1);	/* display out : off */
     #endif
 
-	nxp_fb_dev_setup(par);
+	nxp_fb_dev_setup(par, true);
 	nxp_fb_dev_enable(par, true, 1);
 
 	par->status = FB_STAT_INIT;
@@ -620,12 +659,15 @@ static int nxp_fb_setup_param(int fb, struct fb_info *info, void *data, int laye
 	dev->fb_phy_end   = plat->fb_mem_end;
 	dev->fb_pan_phys  = plat->fb_mem_base;
 
-	dev->hs_left	  = vsi.h_sync_width + vsi.h_back_porch;
+	dev->hs_sync	  = vsi.h_sync_width;
+	dev->hs_left	  = vsi.h_back_porch;
 	dev->hs_right	  = vsi.h_front_porch;
-	dev->vs_upper	  = vsi.v_sync_width + vsi.v_back_porch;
+	dev->vs_sync	  = vsi.v_sync_width;
+	dev->vs_upper	  = vsi.v_back_porch;
 	dev->vs_lower	  = vsi.v_front_porch;
 	dev->pixelclk	  = vsi.pixel_clock_hz ? vsi.pixel_clock_hz : FB_DEV_PIXELCLOCK;
 	dev->skip_vsync   = plat->skip_pan_vsync ? 1 : 0;
+	dev->rotate       = 0;
 
 	dev->fb_vir_base  = 0;
 	dev->fb_remapped  = 0;
@@ -668,6 +710,8 @@ static void nxp_fb_setup_info(struct fb_info *info)
 	info->var.right_margin	= dev->hs_right;
 	info->var.upper_margin	= dev->vs_upper;
 	info->var.lower_margin	= dev->vs_lower;
+	info->var.hsync_len	 	= dev->hs_sync;
+	info->var.vsync_len	 	= dev->vs_sync;
 	info->var.pixclock		= (1000000000 / dev->pixelclk) * 1000;	/* pico second */
 
 	/* get resolution */
@@ -689,7 +733,7 @@ static void nxp_fb_setup_info(struct fb_info *info)
 
 	/* other palette & fixed */
 	info->pseudo_palette  = &par->pseudo_pal;
-	info->fix.smem_len    = x_v * y_v * (bpp >> 3);
+	info->fix.smem_len    = (dev->fb_phy_len) ? dev->fb_phy_len : x_v * y_v * (bpp >> 3);
 	info->fix.line_length = (info->var.xres * info->var.bits_per_pixel) >> 3;
 	switch (bpp) {
 		case 32:
@@ -706,7 +750,7 @@ static void nxp_fb_setup_info(struct fb_info *info)
 	}
 
 	if (IS_YUV_LAYER(dev->layer)) {
-		info->fix.smem_len    = 4096 * y_v;
+		info->fix.smem_len    = (dev->fb_phy_len) ? dev->fb_phy_len : 4096 * y_v;
 		info->fix.line_length = (dev->format == FOURCC_YUYV) ? x_v * 2 : 4096;
 		info->fix.type	      = FB_TYPE_PLANES;
 		info->var.nonstd      = (dev->format == FOURCC_YUYV ? LAYER_FORMAT_YUV422 : LAYER_FORMAT_YUV420) << LF1000_NONSTD_FORMAT;
@@ -1032,6 +1076,7 @@ static int nxp_fb_set_par(struct fb_info *info)
 #ifdef SUPPORT_ALTER_HARDWARE_STATE
 	struct nxp_fb_param  *par = info->par;
 	struct nxp_fb_device *dev = &par->fb_dev;
+	bool change_pending = true;
 #endif
 
 	pr_debug("%s (xres:%d, yres:%d, bpp:%d)\n",
@@ -1059,23 +1104,69 @@ static int nxp_fb_set_par(struct fb_info *info)
 		dev->vid_layer = NONSTD_TO_POS(var->nonstd);
 		dev->format    = (NONSTD_TO_PFOR(var->nonstd) == LAYER_FORMAT_YUV422) ? FOURCC_YUYV : FOURCC_YV12;
 		info->fix.line_length = (dev->format == FOURCC_YUYV) ? var->xres * 2 : 4096;
+		change_pending = true;
 	}
 
-    if (dev->x_resol != var->xres ||
+#if defined(CONFIG_NEXELL_DISPLAY_LCD) || defined(CONFIG_NEXELL_DISPLAY_LVDS)
+	if (var->rotate != dev->rotate) {
+		change_pending = true;
+		nxp_soc_disp_device_lcd_flip(0, var->rotate);
+		dev->rotate = var->rotate;
+		printk(KERN_INFO "%s: rotate=%d\n", __func__, var->rotate);
+	}
+
+	if (var->pixclock != (1000000000 / dev->pixelclk) * 1000
+			|| var->left_margin  != dev->hs_left
+			|| var->right_margin != dev->hs_right
+			|| var->upper_margin != dev->vs_upper
+			|| var->lower_margin != dev->vs_lower
+			|| var->hsync_len    != dev->hs_sync
+			|| var->vsync_len    != dev->vs_sync) {
+		struct disp_vsync_info vsi = { 0, };
+		nxp_fb_dev_get_vsync(dev->device_id, dev->fb_id, &vsi);
+		vsi.h_back_porch  = var->left_margin;
+		vsi.h_sync_width  = var->hsync_len;
+		vsi.h_front_porch = var->right_margin;
+		vsi.v_back_porch  = var->upper_margin;
+		vsi.v_sync_width  = var->vsync_len;
+		vsi.v_front_porch = var->lower_margin;
+		vsi.pixel_clock_hz = (1000000000 / var->pixclock) * 1000;
+		if (0 == nxp_soc_disp_device_set_vsync_info(dev->device_id ? DISP_DEVICE_SYNCGEN1 : DISP_DEVICE_SYNCGEN0, &vsi)) {
+			printk(KERN_INFO "%s: pixelclk=%d, blank=%d.%d.%d, %d.%d.%d\n", __func__, vsi.pixel_clock_hz, vsi.h_back_porch, vsi.h_sync_width, vsi.h_front_porch, vsi.v_back_porch, vsi.v_sync_width, vsi.v_front_porch);
+			nxp_fb_dev_enable(par, false, 1);
+			nxp_fb_dev_enable(par, true, 1);
+			change_pending    = true;
+			dev->hs_left	  = vsi.h_back_porch;
+			dev->hs_sync	  = vsi.h_sync_width;
+			dev->hs_right	  = vsi.h_front_porch;
+			dev->vs_upper	  = vsi.v_back_porch;
+			dev->vs_sync	  = vsi.v_sync_width;
+			dev->vs_lower	  = vsi.v_front_porch;
+			dev->pixelclk	  = vsi.pixel_clock_hz;
+		}
+	}
+#endif
+
+    if (change_pending ||
+        dev->x_resol != var->xres ||
         dev->y_resol != var->yres ||
         dev->pixelbit != var->bits_per_pixel) {
-        printk("%s: resetting xres(%d) yres(%d) bps(%d)\n",
+        printk(KERN_INFO "%s: resetting xres(%d) yres(%d) bps(%d)\n",
                 __func__, var->xres, var->yres, var->bits_per_pixel);
 
         dev->x_resol     = var->xres;
         dev->y_resol     = var->yres;
         dev->pixelbit    = var->bits_per_pixel;
-        dev->x_virt	     = dev->x_resol;
-        dev->y_virt	     = dev->y_resol * dev->buffer_num;
+        dev->x_virt	     = 2 * dev->x_resol; // for arbitrary panning
+        dev->y_virt	     = info->fix.smem_len / (dev->x_resol * (dev->pixelbit>>3));
         dev->fb_pan_phys = dev->fb_phy_base;	/* pan restore */
+        if (IS_YUV_LAYER(dev->layer)) {
+        	dev->x_virt  = dev->x_resol_max;
+        	dev->y_virt  = dev->y_resol_max;
+        }
 
         nxp_fb_setup_info(info);
-        nxp_fb_dev_setup(par);
+        nxp_fb_dev_setup(par, false);
     } else {
         if (par->status != FB_STAT_INIT) {
             nxp_fb_setup_info(info);
@@ -1246,7 +1337,9 @@ static int nxp_fb_pan_display(struct fb_var_screeninfo *var, struct fb_info *inf
 		__func__, offset, fb_old!=dev->fb_pan_phys?"up":"pass");
 
 	/* change window layer base */
+#if !defined(CONFIG_NXP4330_LEAPFROG)
 	if (fb_old != dev->fb_pan_phys)
+#endif
 		nxp_fb_update_buffer(info, 1);
 
 	return 0;
@@ -1637,7 +1730,7 @@ skip_alloc:
 		int i;
 		for (i = 0; pdev->id > i; i++) {
 			if (!registered_fb[i]) {
-				printk("FB: Reserve dev/node [%d]\n", i);
+				printk(KERN_INFO "FB: Reserve dev/node [%d]\n", i);
 				registered_fb[i] = info;
 			}
 		}

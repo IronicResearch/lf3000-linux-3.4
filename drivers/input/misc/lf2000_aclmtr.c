@@ -14,7 +14,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-
+#include <linux/delay.h>
 #include <linux/version.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -28,6 +28,7 @@
 #include <mach/platform_id.h>
 #include <mach/gpio.h>
 #include <mach/devices.h>
+
 
 /*
  * device
@@ -52,6 +53,16 @@
 #define NUM_CAL				10
 #define MIN_CAL				0x00010000
 #define MAX_CAL				0x00400000
+
+/* BMA222/BMA222E register/bit definitions */
+#define NEW_DATA			0x01  	//1: new data available, 0: new data not available
+#define BMA222_ACCD_X_LSB	0x02	//bit 0 = NEW_DATA
+#define BMA222_ACCD_X_MSB	0x03
+#define BMA222_ACCD_Y_LSB	0x04	//bit 0 = NEW_DATA
+#define BMA222_ACCD_Y_MSB	0x05
+#define BMA222_ACCD_Z_LSB	0x06	//bit 0 = NEW_DATA
+#define BMA222_ACCD_Z_MSB	0x07
+
 
 struct lf1000_aclmtr {
 	struct input_dev *input;
@@ -180,6 +191,28 @@ static int bma_detect(struct lf1000_aclmtr* dev)
 
 	for (n = bus; n < 2; n++) {
 		dev->i2c_bus = n;
+		dev->i2c_addr = BMA222E_ADDR;
+		id[0] = bma_read_reg(dev, 0x00);
+		if (0xF8 == id[0]) {
+			printk(KERN_INFO "%s: BMA222E device found\n", __FUNCTION__);
+			bma_write_reg(dev, 0x14, 0xB6);	/* soft reset */
+			msleep(2);  /*give 2ms for reset, accl specs suggest max 1.8mSec. Make sure this does not cause any trouble!*/
+			bma_write_reg(dev, 0x16, 0xC7);	/* flat and orient enable */
+			bma_write_reg(dev, 0x17, 0x10);	/* data enable */
+			bma_write_reg(dev, 0x13, 0x00);	/* filtered */
+			//bma_write_reg(dev, 0x10, 0x08);	/* bandwidth = 7.5Hz */
+			bma_write_reg(dev, 0x10, 0x0C);	/* bandwidth = 125Hz */
+			dev->scalex = dev->scaley = dev->scalez = 4;
+			if (get_leapfrog_platform() == LUCY)
+				dev->scalex = dev->scalez *= -1;
+			if (get_leapfrog_platform() == CABO ||
+				get_leapfrog_platform() == BOGOTA ||
+				get_leapfrog_platform() == XANADU)
+                                dev->scalez *= -1;
+			return 1;
+		}
+
+		dev->i2c_bus = n;
 		dev->i2c_addr = BMA220_ADDR;
 		id[0] = bma_read_reg(dev, 0x00);
 		id[1] = bma_read_reg(dev, 0x01);
@@ -212,28 +245,12 @@ static int bma_detect(struct lf1000_aclmtr* dev)
 		        behaves as expected */
 
 			if (get_leapfrog_platform() == CABO ||
+				get_leapfrog_platform() == BOGOTA ||
 				get_leapfrog_platform() == XANADU)
                                 dev->scalez *= -1;
 			return 1;
 		}
-		dev->i2c_bus = n;
-		dev->i2c_addr = BMA222E_ADDR;
-		id[0] = bma_read_reg(dev, 0x00);
 
-		if (0xF8 == id[0]) {
-			printk(KERN_INFO "%s: BMA222E device found\n", __FUNCTION__);
-			bma_write_reg(dev, 0x16, 0xC7);	/* flat and orient enable */
-			bma_write_reg(dev, 0x17, 0x10);	/* data enable */
-			bma_write_reg(dev, 0x13, 0x00);	/* filtered */
-			bma_write_reg(dev, 0x10, 0x08);	/* bandwidth */
-			dev->scalex = dev->scaley = dev->scalez = 4;
-			if (get_leapfrog_platform() == LUCY)
-				dev->scalex = dev->scalez *= -1;
-			if (get_leapfrog_platform() == CABO ||
-				get_leapfrog_platform() == XANADU)
-                                dev->scalez *= -1;
-			return 1;
-		}
 	}
 
 #if 0
@@ -289,20 +306,55 @@ static void bma220_get_xyz(struct lf1000_aclmtr* dev, int* x, int* y, int* z)
 
 static void bma222_get_xyz(struct lf1000_aclmtr* dev, int* x, int* y, int* z)
 {
-	*x = bma_read_reg(dev, 0x03);
-	*y = bma_read_reg(dev, 0x05);
-	*z = bma_read_reg(dev, 0x07);
-	
-	if (*x > 0x007F)
-		*x -= 0x100;
-	if (*y > 0x007F)
-		*y -= 0x100;
-	if (*z > 0x007F)
-		*z -= 0x100;
-
-	dev->x = *x;
-	dev->y = *y;
-	dev->z = *z;
+/*FWBOG-944, read NEW_DATA flag to make sure correct data is available.
+ * The data might be read as 0xFF if we read data when this flag is not set.
+ * do not update the device data if NEW_DAT flag does not get set after 10 reads,
+ * so that wrong data does not get posted */
+	int count=10;
+	while(count){
+		if(bma_read_reg(dev, BMA222_ACCD_X_LSB)& NEW_DATA){
+			*x = bma_read_reg(dev, BMA222_ACCD_X_MSB);
+			if (*x > 0x007F)
+					*x -= 0x100;
+			dev->x = *x;
+			break;
+		}
+		else{
+			count--;
+			if(count==0)
+				printk(KERN_ERR "%s: New data not available\n", __FUNCTION__);
+		}
+	}
+	count=10;
+	while(count){
+		if(bma_read_reg(dev, BMA222_ACCD_Y_LSB)& NEW_DATA){
+			*y = bma_read_reg(dev, BMA222_ACCD_Y_MSB);
+			if (*y > 0x007F)
+				*y -= 0x100;
+			dev->y = *y;
+			break;
+		}
+		else{
+			count--;
+			if(count==0)
+				printk(KERN_ERR "%s: New data not available\n", __FUNCTION__);
+		}
+	}
+	count=10;
+	while(count){
+		if(bma_read_reg(dev, BMA222_ACCD_Z_LSB)& NEW_DATA) {
+			*z = bma_read_reg(dev, BMA222_ACCD_Z_MSB);
+			if (*z > 0x007F)
+					*z -= 0x100;
+			dev->z = *z;
+			break;
+		}
+		else{
+			count--;
+			if(count==0)
+				printk(KERN_ERR "%s: New data not available\n", __FUNCTION__);
+		}
+	}
 }
 
 static void get_orient(struct lf1000_aclmtr* dev, int* orient)
@@ -389,6 +441,7 @@ static void input_work_task(struct	work_struct *work)
 	to Rio and the UI behaves as expected */  
 
 	if (get_leapfrog_platform() == CABO ||
+		get_leapfrog_platform() == BOGOTA ||
 		get_leapfrog_platform() == XANADU) {
 		t = x;
 		x = y;
@@ -409,6 +462,7 @@ static void input_work_task(struct	work_struct *work)
 		if(i_dev->isflat)
 			orient = 1;
 		if (get_leapfrog_platform() == CABO ||
+			get_leapfrog_platform() == BOGOTA ||
 			get_leapfrog_platform() == XANADU) {
 		 /* swizzle orientation to rectify effect of incorrect mounting*/
                                 switch (orient) {
@@ -695,6 +749,7 @@ static ssize_t set_raw_only(struct device *dev, struct device_attribute *attr,
 		if (get_leapfrog_platform() == LUCY)
 			i_dev->scalex = i_dev->scalez *= -1;
 		if (get_leapfrog_platform() == CABO ||
+			get_leapfrog_platform() == BOGOTA ||
 			get_leapfrog_platform() == XANADU)
                         i_dev->scalez *= -1;
 		calibrate(i_dev);
@@ -705,6 +760,7 @@ static ssize_t set_raw_only(struct device *dev, struct device_attribute *attr,
 		if (get_leapfrog_platform() == LUCY)
 			i_dev->scalex = i_dev->scalez *= -1;
 		if (get_leapfrog_platform() == CABO ||
+			get_leapfrog_platform() == BOGOTA ||
 			get_leapfrog_platform() == XANADU)
                         i_dev->scalez *= -1;
 		calibrate(i_dev);

@@ -1,4 +1,4 @@
-#define DEBUG 0
+/* #define DEBUG 0 */
 
 #include <linux/kernel.h>
 #include <linux/list.h>
@@ -31,8 +31,12 @@
 #include <mach/soc.h>
 #endif
 
-#ifdef CONFIG_VIDEO_HI253
+#if defined(CONFIG_VIDEO_HI253) || defined(CONFIG_VIDEO_HI257)  || defined(CONFIG_VIDEO_HI253_HM2056)
 #include "../../hi253.h"
+#endif
+
+#if defined(CONFIG_VIDEO_HM2056) 
+#include "../../hm2056.h"
 #endif
 
 #include <linux/timer.h>
@@ -317,9 +321,13 @@ static int _hw_set_input_size(struct nxp_vin_clipper *me)
     struct v4l2_mbus_framefmt *mbus_fmt = &me->format[1];
     struct nxp_vin_platformdata *info = me->platdata;
 
-#ifdef CONFIG_VIDEO_HI253
+#if defined(CONFIG_VIDEO_HI253) || defined(CONFIG_VIDEO_HI257)  || defined(CONFIG_VIDEO_HI253_HM2056)
     // Clamp format size to one of native sensor sizes
     hi253_clamp_format_size(mbus_fmt);
+#endif
+#if defined(CONFIG_VIDEO_HM2056)
+    // Clamp format size to one of native sensor sizes
+    hm2056_clamp_format_size(mbus_fmt);
 #endif
 
     pr_debug("%s: w(%d), h(%d)\n", __func__, mbus_fmt->width, mbus_fmt->height);
@@ -357,7 +365,7 @@ static int _hw_set_crop(struct nxp_vin_clipper *me)
     int module = parent->get_module_num(parent);
     struct v4l2_rect *c = &me->crop;
 
-    printk("%s: l(%d), t(%d), w(%d), h(%d)\n", __func__, c->left, c->top, c->width, c->height);
+    pr_debug("%s: l(%d), t(%d), w(%d), h(%d)\n", __func__, c->left, c->top, c->width, c->height);
 
     NX_VIP_SetClipRegion(module, c->left, c->top,
             c->left + c->width, c->top + c->height);
@@ -420,10 +428,10 @@ static void _work_power_down(struct work_struct *work)
     struct nxp_vin_clipper *me = container_of(work, struct nxp_vin_clipper, work_power_down.work);
     struct v4l2_subdev *remote = _get_remote_source_subdev(me);
 
-    printk("%s\n", __func__);
+    pr_debug("%s\n", __func__);
     if (remote && me->platdata->power_enable) {
         if (!(NXP_ATOMIC_READ(&me->state) & (NXP_VIN_STATE_RUNNING_DECIMATOR | NXP_VIN_STATE_RUNNING_CLIPPER))) {
-            printk("power down!!!\n");
+            pr_debug("power down!!!\n");
             me->platdata->power_enable(false);
         }
     }
@@ -441,7 +449,7 @@ static int _configure(struct nxp_vin_clipper *me, int enable)
 
     ret = down_interruptible(&me->s_stream_sem);
 
-    printk("%s: enable %d\n", __func__, enable);
+    pr_debug("%s: enable %d\n", __func__, enable);
     if (enable) {
         if (me->platdata->late_power_down)
             cancel_delayed_work_sync(&me->work_power_down);
@@ -459,13 +467,14 @@ static int _configure(struct nxp_vin_clipper *me, int enable)
             if (me->platdata->power_state_changed())
                 v4l2_subdev_call(remote, core, s_power, 0);
         }
+        me->frame_count = 0;
         ret = v4l2_subdev_call(remote, video, s_stream, enable);
     } else {
         struct nxp_capture *parent = nxp_vin_to_parent(me);
         ret = v4l2_subdev_call(remote, video, s_stream, enable);
 
         /* flush fifo */
-        printk("FIFO Reset\n");
+        pr_debug("FIFO Reset\n");
         NX_VIP_SetFIFOResetMode(parent->get_module_num(parent), NX_VIP_FIFORESET_ALL);
         NX_VIP_ResetFIFO(parent->get_module_num(parent));
 
@@ -474,8 +483,9 @@ static int _configure(struct nxp_vin_clipper *me, int enable)
 
         if (NXP_ATOMIC_READ(&me->state) & NXP_VIN_STATE_STOPPING)
             NXP_ATOMIC_CLEAR_MASK(NXP_VIN_STATE_STOPPING, &me->state);
+        me->frame_count = 0;
     }
-    printk("%s exit\n", __func__);
+    pr_debug("%s exit\n", __func__);
 
     up(&me->s_stream_sem);
 
@@ -499,13 +509,14 @@ static irqreturn_t clipper_irq_handler(void *data)
 
         if (NXP_ATOMIC_READ(&me->state) & NXP_VIN_STATE_STOPPING) {
             struct nxp_capture *parent = nxp_vin_to_parent(me);
-            printk("%s: real stop...\n", __func__);
+            pr_debug("%s: real stop...\n", __func__);
             parent->stop(parent, me);
             _unregister_irq_handler(me);
             _clear_buf(me);
             complete(&me->stop_done);
         } else {
             _update_next_buffer(me);
+            me->frame_count++;
         }
     }
 
@@ -643,11 +654,11 @@ static int _handle_decimator_connection(struct nxp_vin_clipper *me, bool connect
 static void _disable_all(struct nxp_vin_clipper *me)
 {
     if (NXP_ATOMIC_READ(&me->state) & NXP_VIN_STATE_RUNNING_CLIPPER) {
-        printk("%s: clipper video stopping...\n", __func__);
+        pr_debug("%s: clipper video stopping...\n", __func__);
         NXP_ATOMIC_SET_MASK(NXP_VIN_STATE_STOPPING, &me->state);
         if (!wait_for_completion_timeout(&me->stop_done, 2*HZ)) {
             struct nxp_capture *parent = nxp_vin_to_parent(me);
-            printk("wait timeout for stopping\n");
+            pr_debug("wait timeout for stopping\n");
             parent->stop(parent, me);
             _unregister_irq_handler(me);
             _clear_buf(me);
@@ -975,12 +986,12 @@ static int nxp_vin_clipper_s_stream(struct v4l2_subdev *sd, int enable)
         /* printk("lu_addr: %p, cb_addr: %p, cr_addr: %p\n", &_lu_addr, &_cb_addr, &_cr_addr); */
         if (NXP_ATOMIC_READ(&me->state) & NXP_VIN_STATE_STOPPING) {
             int timeout = 50; // 5 second
-            printk("wait clipper stopping...\n");
+            pr_debug("wait clipper stopping...\n");
             while (NXP_ATOMIC_READ(&me->state) & NXP_VIN_STATE_STOPPING) {
                 msleep(100);
                 timeout--;
                 if (timeout == 0) {
-                    printk("timeout!!!\n");
+                    pr_debug("timeout!!!\n");
                     break;
                 }
             }
@@ -999,7 +1010,7 @@ static int nxp_vin_clipper_s_stream(struct v4l2_subdev *sd, int enable)
                 NX_VIP_GetDeciSource(module, &src_width, &src_height);
                 if (c->width != src_width || c->height != src_height) {
                     NX_VIP_GetDecimation(module, &dst_width, &dst_height, NULL, NULL, NULL, NULL);
-                    printk("SetDecimation: src(%dx%d), dst(%dx%d)\n", c->width, c->height, dst_width, dst_height);
+                    pr_debug("SetDecimation: src(%dx%d), dst(%dx%d)\n", c->width, c->height, dst_width, dst_height);
                     NX_VIP_SetDecimation(module, c->width, c->height, dst_width, dst_height);
                 }
             }
@@ -1012,10 +1023,10 @@ static int nxp_vin_clipper_s_stream(struct v4l2_subdev *sd, int enable)
     } else {
         if (is_host_video) {
             if (NXP_ATOMIC_READ(&me->state) & NXP_VIN_STATE_RUNNING_CLIPPER) {
-                printk("clipper video stopping...\n");
+                pr_debug("clipper video stopping...\n");
                 NXP_ATOMIC_SET_MASK(NXP_VIN_STATE_STOPPING, &me->state);
                 if (!wait_for_completion_timeout(&me->stop_done, 2*HZ)) {
-                    printk("wait timeout for stopping\n");
+                    pr_debug("wait timeout for stopping\n");
                     parent->stop(parent, me);
                     _unregister_irq_handler(me);
                     _clear_buf(me);
@@ -1143,7 +1154,7 @@ static int nxp_vin_clipper_set_crop(struct v4l2_subdev *sd,
     struct v4l2_mbus_framefmt *__format =
         _get_pad_format(me, fh, crop->pad, crop->which);
 
-    printk("%s: %dx%d -- %dx%d\n",
+    pr_debug("%s: %dx%d -- %dx%d\n",
            __func__, crop->rect.left, crop->rect.top, crop->rect.width, crop->rect.height);
     if ((crop->rect.left + crop->rect.width) > __format->width ||
         (crop->rect.top + crop->rect.height) > __format->height) {

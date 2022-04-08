@@ -11,5 +11,6 @@ obj-$(CONFIG_WL12XX_SDIO)		+= wl12xx_sdio.o
 
 # small builtin driver bit
 obj-$(CONFIG_WL12XX_PLATFORM_DATA)	+= wl12xx_platform_data.o
+obj-$(CONFIG_WL12XX_BLUETOOTH_GPIO)	+= gpio_en.o
 
 ccflags-y += -D__CHECK_ENDIAN__

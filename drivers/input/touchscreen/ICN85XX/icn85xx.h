@@ -155,6 +155,9 @@ extern int sprd_3rdparty_tp_ldo_level;
 #elif defined(CONFIG_PLAT_NXP4330_XANADU) ||  defined(CONFIG_PLAT_NXP4330_BOGOTA)
 #define SCREEN_MAX_X             (1024)
 #define SCREEN_MAX_Y             (600)
+#elif defined(CONFIG_PLAT_NXP4330_QUITO)
+#define SCREEN_MAX_X             (800)
+#define SCREEN_MAX_Y             (480)
 #else
 #define SCREEN_MAX_X             (480)
 #define SCREEN_MAX_Y             (272)
@@ -167,9 +170,14 @@ static int debug_point = 0;
 static int revert_x = 0;
 static int revert_y = 0;
 static char *fw_version = "0x0";
-static short report_pressure = 40; // 40 = default pressure to report
 #ifdef CONFIG_PLAT_NXP4330_CABO
 static int trans_addr = 0;
+static short report_pressure = 40; // 40 = Forced pressure value
+#elif defined(CONFIG_PLAT_NXP4330_XANADU) ||  defined(CONFIG_PLAT_NXP4330_BOGOTA) \
+   || defined(CONFIG_PLAT_NXP4330_QUITO)
+static short report_pressure = 40; // 40 = Forced pressure value
+#else
+static short report_pressure = 0; // 0 = Raw/Mapped pressure value
 #endif
 #endif
 
@@ -224,6 +232,7 @@ static int trans_addr = 0;
 
 #define MAX_U8PRESSURE				255		// highest pressure value read from TS
 #define MAX_ABS_PRESSURE			100		// highest pressure value sent to input-event
+#define PRESSURE_MULTIPLIER   16    // RA: value chosen by Chipone
 
 #define TS_KEY_HOME                 102
 #define TS_KEY_MENU                 139

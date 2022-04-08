@@ -73,6 +73,9 @@ struct nxp_vin_clipper {
 
     /* for serialization s_stream() */
     struct semaphore s_stream_sem;
+
+    /* irq frame counter */
+    u32     frame_count;
 };
 
 int  nxp_vin_clipper_init(struct nxp_vin_clipper *, struct nxp_vin_platformdata *);

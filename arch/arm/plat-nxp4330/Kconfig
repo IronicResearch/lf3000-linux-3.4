@@ -105,6 +105,18 @@ choice
 		depends on NXP4330_LEAPFROG
 		help
 			Support for LeapFrog Glasgow console
+	
+	config PLAT_NXP4330_CABO
+		bool "CABO: Leapfrog Cabo tablet"
+		depends on NXP4330_LEAPFROG
+		help
+			Support for LeapFrog Cabo tablet
+	
+	config PLAT_NXP4330_QUITO
+		bool "QUITO: Leapfrog Quito tablet"
+		depends on NXP4330_LEAPFROG
+		help
+			Support for LeapFrog Quito tablet
 endchoice
 endif
 

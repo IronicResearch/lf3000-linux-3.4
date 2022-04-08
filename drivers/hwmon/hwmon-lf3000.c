@@ -95,12 +95,13 @@ enum lf2000_power_chip {
  * configuration
  */
 
-#define POWER_BUTTON_SAMPLING_J	(HZ/4)
-#define POWER_SAMPLING_J	(HZ/4)
+#define POWER_BUTTON_SAMPLING_J	(HZ/10)
+#define POWER_SAMPLING_J	(HZ/10)
 
-#define SHUTDOWN_SECS	4
+#define SHUTDOWN_SECS	7
 /* power down system after SHUTDOWN_SECS */
 #define POWER_BUTTON_COUNT  ((HZ * SHUTDOWN_SECS) / POWER_BUTTON_SAMPLING_J)
+
 
 /* platform device data */
 struct lf2000_hwmon {
@@ -110,7 +111,10 @@ struct lf2000_hwmon {
 	unsigned int low_battery_mv;		/* low battery level */
 	unsigned int low_battery_repeat_mv;	/* low battery repeat delta */
 	unsigned int critical_battery_mv;	/* critical battery level */
-
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA
+	unsigned int smooth_battery_mv; 	/* battery voltage value to be used for % calculation */
+	unsigned int pwrbtn_hold_time_for_shutdown;
+#endif
 	unsigned int adc_slope_256;		/* mx part of line	*/
 	unsigned int adc_constant;		/* constant part of line */
 
@@ -140,6 +144,8 @@ struct lf2000_hwmon {
 	struct input_dev *input;
 };
 
+#ifdef CONFIG_BQ24250_CHARGER
+
 #define BQ24250_SDP_DETECTED    	0 /* standard downstream */
 #define BQ24250_CDP_DCP_DETECTED    	1 /* charging downstream/ dedicated charger */
 #define BQ24250_NONE_DETECTED 		2
@@ -164,6 +170,8 @@ static const char *charge_status[] = {
 	[BQ24250_CHARGING_FAULT] = "FAULT",
 };
 
+#endif 
+
 static struct lf2000_hwmon *hwmon_dev = NULL;
 
 /* To make compiler happy... */
@@ -185,7 +193,7 @@ Doing 4 adc reads and taking a max of 4 seems to help
     int adcval[4], maxadc, n, i;
 
     for (n=0; n < 4; n++)
-	adcval[n] = soc_adc_read(channel, 1000);
+    	adcval[n] = soc_adc_read(channel, 1000);
    	
     maxadc = adcval[0]; 
     for (i=1; i < 4; i++)
@@ -225,6 +233,7 @@ static int lf2000_get_battery_mv(struct lf2000_hwmon *hwmon_dev)
 }
 EXPORT_SYMBOL_GPL(lf2000_get_battery_mv);
 
+#ifdef CONFIG_BQ24250_CHARGER
 static unsigned int get_usb_charger_type(unsigned int on_battery)
 {
         if (on_battery)
@@ -251,6 +260,8 @@ static unsigned int get_usb_charger_type(unsigned int on_battery)
 		
         }
 }
+
+#endif
 
 /*
  * Battery pack thermister value below 1000 mv (1 volts) means not in
@@ -317,7 +328,7 @@ static enum lf1000_power_source lf2000_get_power_source(unsigned int on_battery)
 	return(on_battery ? POWER_BATTERY : POWER_EXTERNAL);
 }
 
-
+#define LOW_BATT_WARNING_COUNT 15
 /*
  * Convert battery reading to power status based on current status 
  */
@@ -325,6 +336,8 @@ static enum lf1000_power_status power_to_status(
 		struct lf2000_hwmon *hwmon_dev, int mv)
 {
 	enum lf1000_power_source power_source;
+	static int low_battery_count=0;
+
 
 #ifdef CONFIG_ARCH_LF1000
 	if(gpio_have_gpio_k2())	     /* K2 hack: always external power */
@@ -355,12 +368,19 @@ static enum lf1000_power_status power_to_status(
 
 	if(mv < hwmon_dev->critical_battery_mv)
 		return CRITICAL_BATTERY;
-	
+	//report low battery only if we see 15 consecutive readings below low_battery_mv
+	if(mv < hwmon_dev->low_battery_mv)
+	{
+		if(low_battery_count<LOW_BATT_WARNING_COUNT) //check this so that the count does not overrun
+			low_battery_count++;
+	}
+	else
+		low_battery_count=0;
 	/* hysterisis between 'low' and 'normal' battery */
-	if(mv < hwmon_dev->low_battery_mv || 
+	if((low_battery_count== LOW_BATT_WARNING_COUNT) ||
 		(mv < hwmon_dev->normal_battery_mv &&
 		 hwmon_dev->status == LOW_BATTERY)) {
-		return LOW_BATTERY;
+			return LOW_BATTERY;
 	}
 	if(mv < hwmon_dev->max_battery_mv)
 		return (power_source == POWER_BATTERY ? BATTERY : NIMH);
@@ -391,7 +411,27 @@ static ssize_t show_shutdown(struct device *dev, struct device_attribute *attr,
 
 	return sprintf(buf, "%d\n", priv->shutdown);
 }
-static DEVICE_ATTR(shutdown, S_IRUSR|S_IRGRP|S_IROTH, show_shutdown, NULL);
+/* set shutdown to requested value */
+static ssize_t store_shutdown(struct device *pdev, struct device_attribute *attr,
+		                      const char *buf, size_t count)
+{
+	int temp;
+	struct lf2000_hwmon *priv = (struct lf2000_hwmon *)dev_get_drvdata(pdev);
+
+	if (sscanf(buf, "%d", &temp) != 1)
+		return -EINVAL;
+
+	if (temp != 0 && temp != 1)
+		return -EINVAL;
+
+	priv->shutdown = temp;
+	if(hwmon_dev->shutdown)
+		dev_info(&hwmon_dev->pdev->dev, "shutdown requested \n");
+
+	return(count);
+}
+static DEVICE_ATTR(shutdown, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH,
+		show_shutdown, store_shutdown);
 
 /* report current battery voltage, in mV */
 static ssize_t show_voltage(struct device *dev, struct device_attribute *attr,
@@ -639,6 +679,37 @@ static ssize_t show_power_source(struct device *pdev,
 static DEVICE_ATTR(power_source, S_IRUSR|S_IRGRP|S_IROTH,
 		show_power_source, NULL);
 
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA		
+static ssize_t show_battery_percentage(struct device *dev, struct device_attribute *attr,
+                        char *buf)
+{
+	ssize_t ret = 0;
+	struct lf2000_hwmon *priv = (struct lf2000_hwmon *)dev_get_drvdata(dev);
+	int battery_voltage = 0;
+	enum charging_currents value;
+	int level_0 = 0, level_25 = 0, level_50 = 0, level_75 = 0;
+
+	battery_voltage = priv->smooth_battery_mv;
+	level_0 = BATTERY_0;
+	level_25 = BATTERY_25;
+	level_50 = BATTERY_50;
+	level_75 = BATTERY_75;
+	if ((battery_voltage >= 0) && (battery_voltage < level_0))
+		ret = sprintf(buf, "0 \n");
+	else if ((battery_voltage >= level_0) && (battery_voltage < level_25))
+		ret = sprintf(buf, "25 \n");
+	else if ((battery_voltage >= level_25) && (battery_voltage < level_50))
+		ret = sprintf(buf, "50 \n");
+	else if ((battery_voltage >= level_50) && (battery_voltage < level_75))
+		ret = sprintf(buf, "75 \n");
+	else
+		ret = sprintf(buf, "100 \n");
+			
+		return ret;	
+}
+static DEVICE_ATTR(battery_percentage, S_IRUSR|S_IRGRP|S_IROTH, show_battery_percentage, NULL);
+#endif
+
 #ifdef CONFIG_BQ24250_CHARGER
 static ssize_t show_usb_charger_type(struct device *pdev,
                                 struct device_attribute *attr, char *buf)
@@ -734,6 +805,35 @@ static DEVICE_ATTR(charge_enable, S_IRUSR|S_IRGRP|S_IROTH|S_IWUSR|S_IWGRP|S_IWOT
         show_charge_enable, set_charge_enable);
 
 #endif
+
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA
+static ssize_t show_pwrbtn_hold_time_for_shutdown(struct device *pdev,
+				struct device_attribute *attr, char *buf)
+{
+	struct lf2000_hwmon *priv = (struct lf2000_hwmon *)dev_get_drvdata(pdev);
+	int temp;
+	temp= priv->pwrbtn_hold_time_for_shutdown;
+	return sprintf(buf, "%d\n", temp);
+}
+
+static ssize_t set_pwrbtn_hold_time_for_shutdown(struct device *pdev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int temp;
+	struct lf2000_hwmon *priv = (struct lf2000_hwmon *)dev_get_drvdata(pdev);
+
+	if (sscanf(buf, "%d", &temp) != 1)
+		return -EINVAL;
+	if (temp < 0 || temp > 50)   //max 5 seconds, 1 count=100mSec
+		return -EINVAL;
+	priv->pwrbtn_hold_time_for_shutdown = temp;
+	return(count);
+}
+
+static DEVICE_ATTR(pwrbtn_hold_time_for_shutdown, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH,
+		show_pwrbtn_hold_time_for_shutdown, set_pwrbtn_hold_time_for_shutdown);
+#endif
+        
 static struct attribute *power_attributes[] = {
 	&dev_attr_shutdown.attr,
 	&dev_attr_voltage.attr,
@@ -748,6 +848,10 @@ static struct attribute *power_attributes[] = {
 	&dev_attr_adc_slope_256.attr,
 	&dev_attr_adc_constant.attr,
 	&dev_attr_power_source.attr,
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA
+	&dev_attr_battery_percentage.attr,
+	&dev_attr_pwrbtn_hold_time_for_shutdown.attr,
+#endif
 #ifdef CONFIG_BQ24250_CHARGER
 	&dev_attr_usb_charger_type.attr,
 	&dev_attr_charge_status.attr,
@@ -763,8 +867,7 @@ static struct attribute_group power_attr_group = {
 
 static void battery_monitoring_task(unsigned long data)
 {
-	int usb_charger;
-	u8 rev;
+	
 	struct lf2000_hwmon *priv = (struct lf2000_hwmon *)data;
 
 	queue_work(priv->battery_tasks, &priv->battery_work);
@@ -773,6 +876,8 @@ static void battery_monitoring_task(unsigned long data)
 	priv->battery_timer.data = data;
 	
 #ifdef CONFIG_SOC_LFP100
+	int usb_charger;
+	u8 rev;
 	/* 1P0 (old) or 1P1 (new) */
 	rev = lfp100_get_pmic_rev();
 
@@ -798,13 +903,13 @@ static void battery_monitoring_task(unsigned long data)
 #ifdef CONFIG_TC7734_PMIC
 	
 	/* Check for usb charger changed */
-        if (priv->usb_charger_changed){                       
-        	/*
-		 * TC7734 has auto detection feature for 
-		 * DCP,CDP and SDP, So no need to set charger current
-		 */
-                priv->usb_charger_changed = 0;
-        }
+	if (priv->usb_charger_changed){                       
+		/*
+	 * TC7734 has auto detection feature for 
+	 * DCP,CDP and SDP, So no need to set charger current
+	 */
+			priv->usb_charger_changed = 0;
+	}
 
 #endif
 
@@ -862,19 +967,26 @@ static int get_power_button(int chip)
 static void lf2000_power_button(struct work_struct *work)
 {
 	int power_button = get_power_button(hwmon_dev->chip);
-
 	/* report event if power button just pressed */
-	if (!hwmon_dev->power_button_count && power_button) {	
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA
+	if ((hwmon_dev->power_button_count==hwmon_dev->pwrbtn_hold_time_for_shutdown) && power_button) {
 		input_report_key(hwmon_dev->input, KEY_POWER, 1);
 		input_sync(hwmon_dev->input);
 		dev_info(&hwmon_dev->pdev->dev,
 			"Power button pressed\n");
 	}
+#else
+	if (hwmon_dev->power_button_count && power_button) {
+			input_report_key(hwmon_dev->input, KEY_POWER, 1);
+			input_sync(hwmon_dev->input);
+			dev_info(&hwmon_dev->pdev->dev,
+				"Power button pressed\n");
+		}
+#endif
 
 	/* report if power button is released */
 	if (hwmon_dev->power_button_count < POWER_BUTTON_COUNT &&
 		!power_button) {
-
 		/* report event if power button just released */
 		if (hwmon_dev->power_button_count) {
 			input_report_key(hwmon_dev->input, KEY_POWER, 0);
@@ -1018,7 +1130,7 @@ static int lf2000_is_battery(int chip)
 
 #ifdef CONFIG_TC7734_PMIC
 	case TC7734:
-		ret = tc7734_is_usb_present() ? 0 : 1;
+		ret = tc7734_is_usb_powered() ? 0 : 1;
 		break;
 #endif
 
@@ -1047,6 +1159,41 @@ static void lf2000_set_battery(struct work_struct *work)
 #endif
 	/* read the current battery voltage */
 	hwmon_dev->supply_mv = lf2000_get_battery_mv(hwmon_dev);
+	
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA
+	static int pass = 0;
+	int exp = 0;
+	int new_supply_mv = 0;
+	
+	//3 battery samples - start with default value
+	static int battery_mv1 = 4000;
+	static int battery_mv2 = 4000;
+	static int battery_mv3 = 4000; 
+	
+	exp = (SCALE*(battery_mv1 + battery_mv1 + battery_mv1)/3);
+
+	new_supply_mv = lf2000_get_battery_mv(hwmon_dev);
+	exp = ((new_supply_mv*SCALE+(ALPHA_DIV-1)*exp)/ALPHA_DIV);
+	hwmon_dev->smooth_battery_mv = (exp/SCALE);
+		
+	if (pass == 0)
+	{
+		battery_mv1 = hwmon_dev->supply_mv;
+		pass++;
+	}
+	if (pass == 1)
+	{
+		battery_mv2 = hwmon_dev->supply_mv;
+		pass++;
+	}
+	if (pass == 2)
+	{
+		battery_mv3 = hwmon_dev->supply_mv;
+		pass = 0;
+	}
+
+#endif	
+	
 	/* determine the current power status */
 	hwmon_dev->status = power_to_status(hwmon_dev, hwmon_dev->supply_mv);
 
@@ -1410,6 +1557,7 @@ unsigned int detect_usb_charger(void)
 		case LF3000_BOARD_XANADU_TI:
 		case LF3000_BOARD_XANADU_TI_SS1:
 		case LF3000_BOARD_XANADU_TI_SS2:
+    case LF3000_BOARD_QUITO:
 #ifdef CONFIG_SOC_LFP100
 			if(lfp100_is_usb_present()) {
 				printk(KERN_INFO "%s.%d USB charger detected\n", __func__, __LINE__);
@@ -1423,6 +1571,9 @@ unsigned int detect_usb_charger(void)
 		case LF3000_BOARD_BOGOTA_EXP_1:
 		case LF3000_BOARD_BOGOTA_EXP_2:
 		case LF3000_BOARD_BOGOTA_EXP_3:
+		case LF3000_BOARD_BOGOTA_EXP_4:
+		case LF3000_BOARD_BOGOTA_EXP_5:
+		case LF3000_BOARD_BOGOTA_EXP_6:
 		case LF3000_BOARD_XANADU:
 #ifdef CONFIG_TC7734_PMIC
 			if(tc7734_is_usb_present()){
@@ -1498,12 +1649,16 @@ static unsigned int set_adc_slope_value(void)
 			slope = 502; // (8032 / 4096) * 256
 			break;
 		case LF3000_BOARD_CABO:
+    case LF3000_BOARD_QUITO:
 			slope =  263; // (4200 / 4095) * 256
 			break;
 		case LF3000_BOARD_BOGOTA:
 		case LF3000_BOARD_BOGOTA_EXP_1:
 		case LF3000_BOARD_BOGOTA_EXP_2:
 		case LF3000_BOARD_BOGOTA_EXP_3:
+		case LF3000_BOARD_BOGOTA_EXP_4:
+		case LF3000_BOARD_BOGOTA_EXP_5:
+		case LF3000_BOARD_BOGOTA_EXP_6:
 		case LF3000_BOARD_XANADU:
 		case LF3000_BOARD_XANADU_TI:
 		case LF3000_BOARD_XANADU_TI_SS1:
@@ -1577,8 +1732,10 @@ static int lf2000_power_probe(struct platform_device *pdev)
 	priv->normal_battery_mv   = NORMAL_BATTERY_MV;
 	priv->low_battery_mv      = LOW_BATTERY_MV;
 	priv->low_battery_repeat_mv = LOW_BATTERY_REPEAT_MV;
-	priv->low_battery_mv      = LOW_BATTERY_MV;
 	priv->critical_battery_mv = CRITICAL_BATTERY_MV;
+#ifdef CONFIG_PLAT_NXP4330_BOGOTA
+	priv->pwrbtn_hold_time_for_shutdown = 3; //300mSec
+#endif
 
 #ifdef CONFIG_ARCH_LF1000
 	if (gpio_have_gpio_dev()) {
@@ -1650,11 +1807,18 @@ static int lf2000_power_probe(struct platform_device *pdev)
 
 	/* set up USB wall charger detection */
 	priv->usb_charger_changed = 0;
+	/* XXX: (RAlfaro)
+	 * NXP4330 devices do not have 'USB_CHG_DETECT' gpio.
+	 */
+#ifndef CONFIG_PLAT_NXP4330
 	if (!setup_usb_charger(priv, USB_CHG_DETECT))
 	{
+#endif
 		detect_wall_charger(priv);
+#ifndef CONFIG_PLAT_NXP4330
 	}
-	
+#endif
+
 	/* set up work queue to handle the power button */
 	priv->power_button_tasks =
 		create_singlethread_workqueue("power button tasks");

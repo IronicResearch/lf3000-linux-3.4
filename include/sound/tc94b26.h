@@ -1,6 +1,4 @@
 /*
- * FIXME: sesters - placeholder for include/sound/TC94b26.h file
-/*
  * Definitions for TC94B26 codec driver
  *
  * This program is free software; you can redistribute it and/or

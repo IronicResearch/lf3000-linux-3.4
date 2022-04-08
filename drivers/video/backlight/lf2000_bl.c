@@ -56,17 +56,22 @@ static int intensity_to_tc7734_wled[TC7734_WLED_ENTRIES] = {
 static int lf2000_intensity_to_wled(int intensity)
 {
 	int i;
+
+#ifdef CONFIG_SOC_LFP100
 	if (lfp100_have_lfp100()) {
-	for (i = 0; i < LFP100_WLED_ENTRIES; i++) {
-		if (intensity < intensity_to_lfp100_wled[i])
-			break;
+		for (i = 0; i < LFP100_WLED_ENTRIES; i++) {
+			if (intensity < intensity_to_lfp100_wled[i])
+				break;
+		}
+		if (i < LFP100_WLED_ENTRIES)
+			return i;
+		/* entry not found, at max */
+		return LFP100_WLED_ENTRIES - 1;
 	}
-	if (i < LFP100_WLED_ENTRIES)
-		return i;
-	/* entry not found, at max */
-	return LFP100_WLED_ENTRIES - 1;
-	}
-	else if (tc7734_have_tc7734()) {
+#endif
+
+#ifdef CONFIG_TC7734_PMIC
+	if (tc7734_have_tc7734()) {
 		for (i = 0; i < TC7734_WLED_ENTRIES; i++) {
 				if (intensity < intensity_to_tc7734_wled[i])
 					break;
@@ -76,10 +81,8 @@ static int lf2000_intensity_to_wled(int intensity)
 			/* entry not found, at max */
 			return TC7734_WLED_ENTRIES - 1;
 	}
+#endif
 }
-
-
-
 
 
 static int lf2000_bl_get_brightness(struct backlight_device *bd)
@@ -102,28 +105,40 @@ static int lf2000_bl_set_brightness(struct backlight_device *bd)
 #endif
 
 	if (bd->props.brightness == LF2000_NO_BRIGHTNESS) {
+
+#ifdef CONFIG_SOC_LFP100
 	    if (lfp100_have_lfp100()) {
 	        priv->bl->props.brightness = 
 	            intensity_to_lfp100_wled[lfp100_read_reg(LFP100_WLED)] - 1; 
 	    }
-	    else if (tc7734_have_tc7734()) {
+#endif
+
+#ifdef CONFIG_TC7734_PMIC
+	    if (tc7734_have_tc7734()) {
 			priv->bl->props.brightness =
 				intensity_to_tc7734_wled[(tc7734_read_reg(TC7734_DDIM)&TC7734_BACKLIGHT_CONFIG_MASK)] - 1; //only read bits 4:0, bit 7 is phase select for TC7734.
-		}else {
+	    } else {
 	        priv->bl->props.brightness = LF2000_INITIAL_BRIGHTNESS;
 	    }
+#endif
 	}
 
 	intensity = bd->props.brightness;
 
+#ifdef CONFIG_SOC_LFP100
 	if (lfp100_have_lfp100()) {
 		lfp100_write_reg(LFP100_WLED, 
 			lf2000_intensity_to_wled(intensity));
 	}
-	else if (tc7734_have_tc7734()) {
-			tc7734_write_reg(TC7734_DDIM,
+#endif
+
+#ifdef CONFIG_TC7734_PMIC
+	if (tc7734_have_tc7734()) {
+		tc7734_write_reg(TC7734_DDIM,
 				(lf2000_intensity_to_wled(intensity)&TC7734_BACKLIGHT_CONFIG_MASK|TC7734_LEDD_PS));
-		}
+	}
+#endif
+
 #ifdef CONFIG_ARCH_LF1000
 	else {
 		if (pwm_set_duty_cycle(priv->pwm_channel, intensity))

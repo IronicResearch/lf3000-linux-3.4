@@ -2341,9 +2341,10 @@ void NX_DPC_SetOutputFormat
 (
     U32 ModuleIndex,
 	OUTPUTFORMAT OutputFormat,	///< [in] video/color output format
-	U8 OutputVideoConfig        ///< [in] video output config
+	U8 OutputVideoConfig,        ///< [in] video output config
 	                            ///< [in] 0 : Cb Y Cr Y  |  1 : Cb Y Cr Y
 	                            ///< [in] 2 : Cb Y Cr Y  |  3 : Cb Y Cr Y
+	CBOOL SwapRB                           
 )
 {
 
@@ -2381,6 +2382,8 @@ void NX_DPC_SetOutputFormat
 	U32 regvalue;
 	U32 regvalue0;
 	register struct NX_DPC_RegisterSet* pRegister;
+	
+	const U32 SWAPRB_POS	= 15;
 
 	NX_ASSERT( NUMBER_OF_DPC_MODULE > ModuleIndex );
 	NX_ASSERT( CNULL != __g_ModuleVariables[ModuleIndex].pRegister );
@@ -2391,6 +2394,7 @@ void NX_DPC_SetOutputFormat
 
 
 	regvalue |= (FORMAT_TABLE[OutputFormat]<<8);
+	if( SwapRB )	regvalue |= (U32)(1U<<SWAPRB_POS);
 	WriteIODW(&pRegister->DPCCTRL1, (U32)regvalue);
 
 	regvalue0 = (U32)(ReadIODW(&pRegister -> DPCCTRL1) & 0xff3f);

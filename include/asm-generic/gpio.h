@@ -66,8 +66,8 @@ struct device_node;
  * @dbg_show: optional routine to show contents in debugfs; default code
  *	will be used when this is omitted, but custom code can show extra
  *	state (such as pullup/pulldown configuration).
- * @set_pullup: optional routine to set pull up resistor value
- * @get_pullup: optional routine to get pull up resistor value
+ * @set_pull: optional routine to set pull up / pull down resistor value
+ * @get_pull: optional routine to get pull up / pull down resistor value
  * @set_current: optional routine to set drive strength value
  * @get_current: optional routine to get drive strength value
  * @set_function: optional routine to set alternate function for a pin
@@ -123,10 +123,10 @@ struct gpio_chip {
 	void			(*dbg_show)(struct seq_file *s,
 						struct gpio_chip *chip);
 						
-	int			(*set_pullup)(struct gpio_chip *chip,
+	int			(*set_pull)(struct gpio_chip *chip,
 						unsigned offset, unsigned value);
 						
-	int			(*get_pullup)(struct gpio_chip *chip,
+	int			(*get_pull)(struct gpio_chip *chip,
 						unsigned offset);
 	
 	int			(*set_current)(struct gpio_chip *chip,
@@ -191,8 +191,8 @@ extern int gpio_get_value_cansleep(unsigned gpio);
 extern void gpio_set_value_cansleep(unsigned gpio, int value);
 
 /* GPIO Framework extensions */
-extern int gpio_set_pullup(unsigned gpio, unsigned value);
-extern int gpio_get_pullup(unsigned gpio);
+extern int gpio_set_pull(unsigned gpio, unsigned value);
+extern int gpio_get_pull(unsigned gpio);
 extern int gpio_set_current(unsigned gpio, unsigned value);
 extern int gpio_get_current(unsigned gpio);
 extern int gpio_set_function(unsigned gpio, unsigned value);

@@ -382,9 +382,11 @@ void NX_DPC_SetOutputFormat
 (
     U32 ModuleIndex,
 	OUTPUTFORMAT OutputFormat,	///< [in] video/color output format
-	U8 OutputVideoConfig        ///< [in] video output config
+	U8 OutputVideoConfig,       ///< [in] video output config
 	                            ///< [in] 0 : Cb Y Cr Y  |  1 : Cb Y Cr Y
 	                            ///< [in] 2 : Cb Y Cr Y  |  3 : Cb Y Cr Y
+	CBOOL SwapRB				///< [in] CTRUE = Swap Red and Blue component \n 
+								///< 		for RGB output, CFALSE = No swap
 );
 void NX_DPC_SetQuantizationMode
 (

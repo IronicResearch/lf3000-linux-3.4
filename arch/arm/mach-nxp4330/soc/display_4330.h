@@ -85,4 +85,8 @@
 		*(unsigned int*)B = ((_tb >>  0) & 0xFFFUL) | (_tb & 0x800 ? 0xfffff000 : 0x0);		\
 		} while (0)
 
+void spi_lcd_init(void);
+void spi_lcd_setup(void);
+void spi_lcd_flip(int module, int flip);
+
 #endif /* __DISPLAY_4330_H__ */

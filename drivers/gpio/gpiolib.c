@@ -16,6 +16,10 @@
 #include <asm/gpio.h>
 #include <linux/lf3000/gpio_ioctl.h>
 
+#ifdef CONFIG_NXP4330_LEAPFROG
+#include <nx_gpio.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/gpio.h>
 
@@ -276,7 +280,7 @@ static ssize_t gpio_direction_store(struct device *dev,
 		status = -EINVAL;
 
 	mutex_unlock(&sysfs_lock);
-	return status ? : size;
+	return status ? 0 : size;
 }
 
 static /* const */ DEVICE_ATTR(direction, 0644,
@@ -556,65 +560,80 @@ static ssize_t gpio_active_low_store(struct device *dev,
 
 	mutex_unlock(&sysfs_lock);
 
-	return status ? : size;
+	return status ? 0 : size;
 }
 
 static const DEVICE_ATTR(active_low, 0644,
 		gpio_active_low_show, gpio_active_low_store);
 
-static ssize_t gpio_pullup_show(struct device *dev,
+static ssize_t gpio_pull_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	const struct gpio_desc	*desc = dev_get_drvdata(dev);
 	unsigned		gpio = desc - gpio_desc;
 	ssize_t			status;
+	unsigned 		offset;
+	int			pullup;
 
 	mutex_lock(&sysfs_lock);
 
 	if (!test_bit(FLAG_EXPORT, &desc->flags)) {
 		status = -EIO;
-	} else if(!desc->chip || !desc->chip->get_pullup) {
+	} else if(!desc->chip || !desc->chip->get_pull) {
 		status = -EIO;
 	} else {
-		unsigned offset = gpio - desc->chip->base;
-		int pullup = desc->chip->get_pullup(desc->chip, offset);
-		status = sprintf(buf, "%d\n", pullup);
+		offset = gpio - desc->chip->base;
+		pullup = desc->chip->get_pull(desc->chip, offset);
+		switch(pullup) {
+		case NX_GPIO_PADPULL_DN:
+			status = sprintf(buf, "down\n");
+			break;
+		case NX_GPIO_PADPULL_UP:
+			status = sprintf(buf, "up\n");
+			break;
+		case NX_GPIO_PADPULL_OFF:
+			status = sprintf(buf, "off\n");
+			break;
+		}
 	}
 	
 	mutex_unlock(&sysfs_lock);
 	return status;
 }
 
-static ssize_t gpio_pullup_store(struct device *dev,
+static ssize_t gpio_pull_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct gpio_desc	*desc = dev_get_drvdata(dev);
 	unsigned		gpio = desc - gpio_desc;
 	ssize_t			status;
+	int			value;
+	unsigned 		offset;
 
 	mutex_lock(&sysfs_lock);
 
 	if (!test_bit(FLAG_EXPORT, &desc->flags)) {
 		status = -EIO;
-	} else if(!desc->chip || !desc->chip->set_pullup) {
+	} else if(!desc->chip || !desc->chip->set_pull) {
 		status = -EIO;
 	} else {
-		long value;
-		status = strict_strtol(buf, 0, &value);
-		
-		if(status == 0)
-		{
-			unsigned offset = gpio - desc->chip->base;
-			status = desc->chip->set_pullup(desc->chip, offset, value);
+		offset = gpio - desc->chip->base;
+		if (sysfs_streq(buf, "down")) {
+			value = NX_GPIO_PADPULL_DN;
+		} else if (sysfs_streq(buf, "up")) {
+			value = NX_GPIO_PADPULL_UP;
+		} else if (sysfs_streq(buf, "off")) {
+			value = NX_GPIO_PADPULL_OFF;
 		}
+		status = desc->chip->set_pull(desc->chip, offset, value);
 	}
 	
 	mutex_unlock(&sysfs_lock);
-	return status ? : size;
+	return status ? 0 : size;
 }
 
-static const DEVICE_ATTR(pullup, 0644,
-		gpio_pullup_show, gpio_pullup_store);
+static const DEVICE_ATTR(pull, 0644,
+		gpio_pull_show, gpio_pull_store);
 		
 static ssize_t gpio_current_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -935,9 +954,9 @@ int gpio_export(unsigned gpio, bool direction_may_change)
 				status = device_create_file(dev,
 						&dev_attr_edge);
 						
-			if (!status && ( desc->chip->set_pullup || desc->chip->get_pullup ) )
+			if (!status && ( desc->chip->set_pull || desc->chip->get_pull ) )
 				status = device_create_file(dev,
-						&dev_attr_pullup);
+						&dev_attr_pull);
 						
 			if (!status && ( desc->chip->set_current || desc->chip->get_current ) )
 				status = device_create_file(dev,
@@ -1336,13 +1355,13 @@ static long gpio_ioctl(struct file *filp, unsigned cmd, unsigned long arg)
 			goto gpio_ioctl_efault;
 		if(copy_from_user((void *)&c, argp, sizeof(struct func_cmd)))
 			goto gpio_ioctl_efault;
-		retval = gpio_set_pullup(c.func.gpio, c.func.func);
+		retval = gpio_set_pull(c.func.gpio, c.func.func);
 		break;
 
 		case GPIO_IOCXPULLUP:
 		if(copy_from_user((void *)&c, argp, sizeof(struct func_cmd)))
 			goto gpio_ioctl_efault;
-		retval = gpio_get_pullup(c.func.gpio);
+		retval = gpio_get_pull(c.func.gpio);
 		if(retval < 0)
 			goto gpio_ioctl_efault;
 		c.func.func = retval;
@@ -1933,7 +1952,7 @@ fail:
 }
 EXPORT_SYMBOL_GPL(gpio_set_debounce);
 
-int gpio_set_pullup(unsigned gpio, unsigned value)
+int gpio_set_pull(unsigned gpio, unsigned value)
 {
 	unsigned long		flags;
 	struct gpio_chip	*chip;
@@ -1948,7 +1967,7 @@ int gpio_set_pullup(unsigned gpio, unsigned value)
 	if (!gpio_is_valid(gpio))
 		goto fail;
 	chip = desc->chip;
-	if (!chip || !chip->set || !chip->set_pullup)
+	if (!chip || !chip->set || !chip->set_pull)
 		goto fail;
 	gpio -= chip->base;
 	if (gpio >= chip->ngpio)
@@ -1963,7 +1982,7 @@ int gpio_set_pullup(unsigned gpio, unsigned value)
 
 	might_sleep_if(chip->can_sleep);
 
-	return chip->set_pullup(chip, gpio, value);
+	return chip->set_pull(chip, gpio, value);
 
 fail:
 	spin_unlock_irqrestore(&gpio_lock, flags);
@@ -1973,9 +1992,9 @@ fail:
 
 	return status;
 }
-EXPORT_SYMBOL(gpio_set_pullup);
+EXPORT_SYMBOL(gpio_set_pull);
 
-int gpio_get_pullup(unsigned gpio)
+int gpio_get_pull(unsigned gpio)
 {
 	unsigned long		flags;
 	struct gpio_chip	*chip;
@@ -1990,7 +2009,7 @@ int gpio_get_pullup(unsigned gpio)
 	if (!gpio_is_valid(gpio))
 		goto fail;
 	chip = desc->chip;
-	if (!chip || !chip->set || !chip->get_pullup)
+	if (!chip || !chip->set || !chip->get_pull)
 		goto fail;
 	gpio -= chip->base;
 	if (gpio >= chip->ngpio)
@@ -2005,7 +2024,7 @@ int gpio_get_pullup(unsigned gpio)
 
 	might_sleep_if(chip->can_sleep);
 
-	return chip->get_pullup(chip, gpio);
+	return chip->get_pull(chip, gpio);
 
 fail:
 	spin_unlock_irqrestore(&gpio_lock, flags);
@@ -2015,7 +2034,7 @@ fail:
 
 	return status;
 }
-EXPORT_SYMBOL(gpio_get_pullup);
+EXPORT_SYMBOL(gpio_get_pull);
 
 int gpio_set_current(unsigned gpio, unsigned value)
 {

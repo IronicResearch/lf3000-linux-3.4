@@ -267,6 +267,23 @@ static void dwc_otg_pcd_update_connected_state(unsigned long data)
 	}
 }
 
+#ifdef CONFIG_TC7734_PMIC
+/*
+ * LF3000 sometimes misses VBUS disconnect message.
+ * Toshiba TC7734 PMIC makes a reminder call here on USB VBUS disconnect
+ */
+
+#define	TC7734_USB_DISCONNECT	0
+struct input_dev *tc7734_input = NULL;
+
+void dwc_otg_pcd_update_disconnected_state_tc7734(void)
+{
+	input_report_switch(tc7734_input, SW_LID, TC7734_USB_DISCONNECT);
+	input_sync(tc7734_input);
+}
+EXPORT_SYMBOL(dwc_otg_pcd_update_disconnected_state_tc7734);
+#endif
+
 void dwc_otg_pcd_start(dwc_otg_pcd_t * pcd,
 		       const struct dwc_otg_pcd_function_ops *fops)
 {
@@ -1462,6 +1479,10 @@ dwc_otg_pcd_t *dwc_otg_pcd_init(dwc_otg_core_if_t * core_if)
 		 DWC_FREE(pcd);
 		 return NULL;
 	}
+
+#ifdef CONFIG_TC7734_PMIC
+	tc7734_input = pcd->input;	/* save for TC7734 USB Disconnect Msg */
+#endif
 
 	/* Initialize connection state timer */
 	setup_timer( &(pcd->conn_state_timer), dwc_otg_pcd_update_connected_state,

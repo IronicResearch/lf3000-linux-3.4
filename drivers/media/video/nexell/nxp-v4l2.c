@@ -1,4 +1,4 @@
-#define DEBUG 1
+/* #define DEBUG 1 */
 
 #include <linux/device.h>
 #include <linux/errno.h>
@@ -45,6 +45,30 @@ void *nxp_v4l2_get_alloc_ctx(void)
         return &__me->v4l2_dev;
     return NULL;
 }
+
+static ssize_t show_clipper_count(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+    unsigned int count = 0;
+#ifdef CONFIG_VIDEO_NXP_CAPTURE
+    if (__me->capture[1] && __me->capture[1]->vin_clipper.frame_count > 0)
+        count = __me->capture[1]->vin_clipper.frame_count;
+    else
+        count = __me->capture[0]->vin_clipper.frame_count;
+#endif
+    return scnprintf(buf, PAGE_SIZE, "%d\n", count);
+}
+
+static struct device_attribute clipper_attr = __ATTR(clipper_count, 0644, show_clipper_count, NULL);
+
+static struct attribute *attrs[] = {
+    &clipper_attr.attr,
+    NULL,
+};
+
+static struct attribute_group nxp_v4l2_attr_group = {
+    .attrs = (struct attribute **)attrs,
+};
 
 static int __devinit nxp_v4l2_probe(struct platform_device *pdev)
 {
@@ -175,8 +199,10 @@ static int __devinit nxp_v4l2_probe(struct platform_device *pdev)
         goto err_register_out_subdev;
     }
 
+    ret = sysfs_create_group(&pdev->dev.kobj, &nxp_v4l2_attr_group);
+
     platform_set_drvdata(pdev, nxp_v4l2);
-    printk("%s success!!!\n", __func__);
+    pr_debug("%s success!!!\n", __func__);
 
     return 0;
 

@@ -85,7 +85,7 @@
 #include <linux/slab.h>
 #include <mach/soc.h>
 
-#include <mach/cfg_type.h>
+#include <cfg_type.h>
 #include <mach/platform.h>
 
 static char *fw_version = "0.0.0.0";

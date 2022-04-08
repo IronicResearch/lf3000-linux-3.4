@@ -22,7 +22,7 @@
 #include "icn85xx.h"
 
 #if COMPILE_FW_WITH_DRIVER
-#if SUPPORT_NXP4330 && defined(CONFIG_PLAT_NXP4330_CABO)
+#if SUPPORT_NXP4330 && (defined(CONFIG_PLAT_NXP4330_CABO) || defined(CONFIG_PLAT_NXP4330_QUITO))
 #include "icn85xx_fw_cabo.h"
 #elif SUPPORT_NXP4330 && (defined(CONFIG_PLAT_NXP4330_XANADU) || defined(CONFIG_PLAT_NXP4330_BOGOTA))
 #include "icn85xx_fw_xanadu.h"
@@ -49,6 +49,8 @@ static char firmware[128] = "icn85xx_firmware";
 static char firmware[128] = "icn85xx_firmware";
 //bool  RK_83XX_85XX_check = true;
 #endif
+
+#define TRUE_PRESSURE 0
 
  //yank added
  void icn85xx_charge_mode()
@@ -1820,161 +1822,212 @@ function    : reprot touch ponit
 #if CTP_REPORT_PROTOCOL
 static int icn85xx_report_value_B(void)
 {
-    struct icn85xx_ts_data *icn85xx_ts = i2c_get_clientdata(this_client);
-    char buf[POINT_NUM*POINT_SIZE+3]={0};
-    static unsigned char finger_last[POINT_NUM + 1]={0};
-    unsigned char  finger_current[POINT_NUM + 1] = {0};
-    unsigned int position = 0;
-    int temp = 0;
-    int ret = -1;
-    icn85xx_info("==icn85xx_report_value_B ==\n");
-
-    ret = icn85xx_i2c_rxdata(0x1000, buf, POINT_NUM*POINT_SIZE+2);
-    if (ret < 0) {
-        icn85xx_error("%s read_data i2c_rxdata failed: %d\n", __func__, ret);
-        return ret;
-    }
-    
+  struct icn85xx_ts_data *icn85xx_ts = i2c_get_clientdata(this_client);
+  char buf[POINT_NUM*POINT_SIZE+3]={0};
+  static unsigned char finger_last[POINT_NUM + 1]={0};
+  unsigned char  finger_current[POINT_NUM + 1] = {0};
+  unsigned int position = 0;
+  int temp = 0;
+  int ret = -1;
+  int pressure = 0;
   
-    icn85xx_ts->point_num = buf[1];
-    /* sanity check */
-    if (icn85xx_ts->point_num > POINT_NUM) {
-    	icn85xx_error("\nicn85xx_ts: point_num(%i) exceeds POINT_NUM(%i)\n", icn85xx_ts->point_num, POINT_NUM);
-    	return -1;
-  	}
+  icn85xx_info("==icn85xx_report_value_B ==\n");
 
-    if(icn85xx_ts->point_num > 0)
-    {
-        for(position = 0; position<icn85xx_ts->point_num; position++)
-        {       
-            temp = buf[2 + POINT_SIZE*position] + 1;
-			if (temp > POINT_NUM+1)
-			{
-		    	icn85xx_error("\nicn85xx_ts: temp(%i) exceeds point_num[] bounds(%i)\n", temp, POINT_NUM+1);
-    			return -1;
-			}
+  ret = icn85xx_i2c_rxdata(0x1000, buf, POINT_NUM*POINT_SIZE+2);
+  if (ret < 0) {
+    icn85xx_error("%s read_data i2c_rxdata failed: %d\n", __func__, ret);
+    return ret;
+  }
 
-            finger_current[temp] = 1;
-            icn85xx_ts->point_info[temp].u8ID = buf[2 + POINT_SIZE*position];
-            icn85xx_ts->point_info[temp].u16PosX = (buf[4 + POINT_SIZE*position]<<8) + buf[3 + POINT_SIZE*position];
-            icn85xx_ts->point_info[temp].u16PosY = (buf[6 + POINT_SIZE*position]<<8) + buf[5 + POINT_SIZE*position];
-            icn85xx_ts->point_info[temp].u8Pressure = buf[7 + POINT_SIZE*position];
-            icn85xx_ts->point_info[temp].u8EventId = buf[8 + POINT_SIZE*position];
-            
-            if(icn85xx_ts->point_info[temp].u8EventId == 4)
-                finger_current[temp] = 0;
-                            
-            //if(1 == icn85xx_ts->revert_x_flag)
-			if (revert_x == 1)
-            {
-                icn85xx_ts->point_info[temp].u16PosX = icn85xx_ts->screen_max_x- icn85xx_ts->point_info[temp].u16PosX;
-            }
+  icn85xx_ts->point_num = buf[1];
+  
+  /* sanity check */
+  if (icn85xx_ts->point_num > POINT_NUM) {
+    icn85xx_error("\nicn85xx_ts: point_num(%i) exceeds POINT_NUM(%i)\n", icn85xx_ts->point_num, POINT_NUM);
+    return -1;
+  }
 
-            //if(1 == icn85xx_ts->revert_y_flag)
-            if (revert_y == 1)
-			{
-                icn85xx_ts->point_info[temp].u16PosY = icn85xx_ts->screen_max_y- icn85xx_ts->point_info[temp].u16PosY;
-            }
+  /* Any finger events? */
+  if(icn85xx_ts->point_num > 0)
+  {
+    for(position = 0; position < icn85xx_ts->point_num; position++)
+    {       
+      temp = buf[2 + POINT_SIZE*position] + 1;
+      if (temp > POINT_NUM+1)
+      {
+        icn85xx_error("\nicn85xx_ts: temp(%i) exceeds point_num[] bounds(%i)\n", temp, POINT_NUM+1);
+        return -1;
+      }
 
-            /* sanity check */
-            if (icn85xx_ts->point_info[temp].u16PosX > SCREEN_MAX_X)
-            {
-    			icn85xx_error("\nicn85xx_ts: PosX(%i) is greater than SCREEN_MAX_X(%i)\n", icn85xx_ts->point_info[temp].u16PosX, SCREEN_MAX_X);
-		    	return -1;
-    		}
-            if (icn85xx_ts->point_info[temp].u16PosY > SCREEN_MAX_Y)
-            {
-    			icn85xx_error("\nicn85xx_ts: PosY(%i) is greater than SCREEN_MAX_Y(%i)\n", icn85xx_ts->point_info[temp].u16PosY, SCREEN_MAX_Y);
-		    	return -1;
-    		}
+      finger_current[temp] = 1;
+      icn85xx_ts->point_info[temp].u8ID = buf[2 + POINT_SIZE*position];
+      icn85xx_ts->point_info[temp].u16PosX = (buf[4 + POINT_SIZE*position]<<8) + buf[3 + POINT_SIZE*position];
+      icn85xx_ts->point_info[temp].u16PosY = (buf[6 + POINT_SIZE*position]<<8) + buf[5 + POINT_SIZE*position];
+      icn85xx_ts->point_info[temp].u8Pressure = buf[7 + POINT_SIZE*position];
+      icn85xx_ts->point_info[temp].u8EventId = buf[8 + POINT_SIZE*position];
+      
+      if(icn85xx_ts->point_info[temp].u8EventId == 4)
+          finger_current[temp] = 0;
+                          
+      //if(1 == icn85xx_ts->revert_x_flag)
+      if (revert_x == 1)
+        icn85xx_ts->point_info[temp].u16PosX = icn85xx_ts->screen_max_x- icn85xx_ts->point_info[temp].u16PosX;
 
-            icn85xx_info("temp %d\n", temp);
-            icn85xx_info("u8ID %d\n", icn85xx_ts->point_info[temp].u8ID);
-            icn85xx_info("u16PosX %d\n", icn85xx_ts->point_info[temp].u16PosX);
-            icn85xx_info("u16PosY %d\n", icn85xx_ts->point_info[temp].u16PosY);
-            icn85xx_info("u8Pressure %d\n", icn85xx_ts->point_info[temp].u8Pressure);
-            icn85xx_info("u8EventId %d\n", icn85xx_ts->point_info[temp].u8EventId);             
-            icn85xx_info("u8Pressure %d\n", icn85xx_ts->point_info[temp].u8Pressure*16);
-        }
-    }   
-    else
-    {
-        for(position = 1; position < POINT_NUM+1; position++)
-        {
-            finger_current[position] = 0;
-        }
-        icn85xx_point_info("no touch\n");
+      //if(1 == icn85xx_ts->revert_y_flag)
+      if (revert_y == 1)
+        icn85xx_ts->point_info[temp].u16PosY = icn85xx_ts->screen_max_y- icn85xx_ts->point_info[temp].u16PosY;
+
+      /* sanity check */
+      if (icn85xx_ts->point_info[temp].u16PosX > SCREEN_MAX_X)
+      {
+        icn85xx_error("\nicn85xx_ts: PosX(%i) is greater than SCREEN_MAX_X(%i)\n", icn85xx_ts->point_info[temp].u16PosX, SCREEN_MAX_X);
+        return -1;
+      }
+      if (icn85xx_ts->point_info[temp].u16PosY > SCREEN_MAX_Y)
+      {
+        icn85xx_error("\nicn85xx_ts: PosY(%i) is greater than SCREEN_MAX_Y(%i)\n", icn85xx_ts->point_info[temp].u16PosY, SCREEN_MAX_Y);
+        return -1;
+      }
+
+      icn85xx_info("temp %d\n", temp);
+      icn85xx_info("u8ID %d\n", icn85xx_ts->point_info[temp].u8ID);
+      icn85xx_info("u16PosX %d\n", icn85xx_ts->point_info[temp].u16PosX);
+      icn85xx_info("u16PosY %d\n", icn85xx_ts->point_info[temp].u16PosY);
+      icn85xx_info("u8Pressure %d\n", icn85xx_ts->point_info[temp].u8Pressure);
+      icn85xx_info("u8EventId %d\n", icn85xx_ts->point_info[temp].u8EventId);             
+      icn85xx_info("u8Pressure %d\n", icn85xx_ts->point_info[temp].u8Pressure*PRESSURE_MULTIPLIER);
     }
+  }   
+  else
+  {
+    for(position = 1; position < POINT_NUM+1; position++)
+      finger_current[position] = 0;
 
-    for(position = 1; position < POINT_NUM + 1; position++)
+    icn85xx_point_info("no touch\n");
+  }
+
+  for(position = 1; position < POINT_NUM + 1; position++)
+  {
+    /* Check if touch up */
+    if((finger_current[position] == 0) && (finger_last[position] != 0))
     {
-        if((finger_current[position] == 0) && (finger_last[position] != 0))
-        {
-            // single touch
-			if(position == 1) {
-				struct timespec ts;
-				ktime_get_ts(&ts);
-				if(report_rate < 1)
-					report_rate = 1;
-				if(report_rate > 100)
-					report_rate = 100;
-				next_touch_ns = timespec_to_ns(&ts) + NSEC_PER_SEC / report_rate;
-				input_report_abs(icn85xx_ts->input_dev, ABS_PRESSURE, 0);
-				input_report_key(icn85xx_ts->input_dev, BTN_TOUCH, 0);
-			}
-    		// mt
-            input_mt_slot(icn85xx_ts->input_dev, position-1);
-            input_mt_report_slot_state(icn85xx_ts->input_dev, MT_TOOL_FINGER, false);
-	        input_report_abs(icn85xx_ts->input_dev, ABS_MT_PRESSURE, 0);
-            icn85xx_point_info("one touch up: %d\n", position);
-        }
-        else if(finger_current[position])
-        {
-            // single touch
-			if(position == 1)
-			{
-				/* touch filtering */
-				struct timespec ts;
-				__u64 curr_ns;
-				ktime_get_ts(&ts);
-				curr_ns = timespec_to_ns(&ts);
-				if(curr_ns < next_touch_ns)
-					continue;
-				if(report_rate < 1)
-					report_rate = 1;
-				if(report_rate > 100)
-					report_rate = 100;
-				next_touch_ns = curr_ns + NSEC_PER_SEC / report_rate;
-				input_report_abs(icn85xx_ts->input_dev, ABS_X, icn85xx_ts->point_info[position].u16PosX);
-				input_report_abs(icn85xx_ts->input_dev, ABS_Y, icn85xx_ts->point_info[position].u16PosY);
-				if (report_pressure == 0)
-					input_report_abs(icn85xx_ts->input_dev, ABS_PRESSURE, (int)((icn85xx_ts->point_info[position].u8Pressure*MAX_ABS_PRESSURE)/MAX_U8PRESSURE));
-				else
-					input_report_abs(icn85xx_ts->input_dev, ABS_PRESSURE, report_pressure);
-				input_report_key(icn85xx_ts->input_dev, BTN_TOUCH, 1);
-			}
-            // mt
-            input_mt_slot(icn85xx_ts->input_dev, position-1);
-            input_mt_report_slot_state(icn85xx_ts->input_dev, MT_TOOL_FINGER, true);
-            input_report_abs(icn85xx_ts->input_dev, ABS_MT_TOUCH_MAJOR, 1);
-			if (report_pressure == 0)
-				input_report_abs(icn85xx_ts->input_dev, ABS_MT_PRESSURE, (int)((icn85xx_ts->point_info[position].u8Pressure*MAX_ABS_PRESSURE)/MAX_U8PRESSURE));
-			else
-				input_report_abs(icn85xx_ts->input_dev, ABS_MT_PRESSURE, report_pressure);
-            input_report_abs(icn85xx_ts->input_dev, ABS_MT_POSITION_X, icn85xx_ts->point_info[position].u16PosX);
-            input_report_abs(icn85xx_ts->input_dev, ABS_MT_POSITION_Y, icn85xx_ts->point_info[position].u16PosY);
-            icn85xx_point_info("===position: %d, x = %d,y = %d, press = %d ====\n", position, icn85xx_ts->point_info[position].u16PosX,icn85xx_ts->point_info[position].u16PosY, icn85xx_ts->point_info[position].u8Pressure);
-        }
-
+      /* 
+       * Single touch up
+       */
+      if(position == 1) 
+      {
+        struct timespec ts;
+        ktime_get_ts(&ts);
+        if(report_rate < 1)
+          report_rate = 1;
+        if(report_rate > 100)
+          report_rate = 100;
+        next_touch_ns = timespec_to_ns(&ts) + NSEC_PER_SEC / report_rate;
+        input_report_abs(icn85xx_ts->input_dev, ABS_PRESSURE, 0);
+        input_report_key(icn85xx_ts->input_dev, BTN_TOUCH, 0);
+      }
+      /* 
+       * Multi-touch up
+       */
+      input_mt_slot(icn85xx_ts->input_dev, position-1);
+      input_mt_report_slot_state(icn85xx_ts->input_dev, MT_TOOL_FINGER, false);
+      input_report_abs(icn85xx_ts->input_dev, ABS_MT_PRESSURE, 0);
+      icn85xx_point_info("one touch up: %d\n", position);
     }
-    input_sync(icn85xx_ts->input_dev);
-
-    for(position = 1; position < POINT_NUM + 1; position++)
+    /* check if touch down */
+    else if(finger_current[position])
     {
-        finger_last[position] = finger_current[position];
+      /*
+       * Single touch down
+       */
+      if(position == 1)
+      {
+        /* Touch filtering */
+        struct timespec ts;
+        __u64 curr_ns;
+        ktime_get_ts(&ts);
+        curr_ns = timespec_to_ns(&ts);
+        if(curr_ns < next_touch_ns)
+          continue;
+        if(report_rate < 1)
+          report_rate = 1;
+        if(report_rate > 100)
+          report_rate = 100;
+        next_touch_ns = curr_ns + NSEC_PER_SEC / report_rate;
+        
+        /* (KEY) Button touch event */
+        input_report_key(icn85xx_ts->input_dev, BTN_TOUCH, 1);
+        
+        /* (ABS) Cordinate events */
+        input_report_abs(icn85xx_ts->input_dev, ABS_X, icn85xx_ts->point_info[position].u16PosX);
+        input_report_abs(icn85xx_ts->input_dev, ABS_Y, icn85xx_ts->point_info[position].u16PosY);
+
+        /* (ABS) Pressure event 
+         *  If report_pressure is zero, report raw/mapped value.
+         *  If report_pressure is non-zero, report that explicit value.
+         */
+        if (report_pressure == 0)
+         {
+          /* FIXME: the following is a workaround/hack-fix for a bug in CTP fw
+           * where the last u8pressure before touch up spikes to 55.
+           */
+          if ( icn85xx_ts->point_info[position].u8Pressure == 55 )
+            icn85xx_ts->point_info[position].u8Pressure /= 10;
+          
+          pressure = (int)(icn85xx_ts->point_info[position].u8Pressure * PRESSURE_MULTIPLIER);
+          if ( pressure > MAX_ABS_PRESSURE ) /* upper bound */
+            pressure = MAX_ABS_PRESSURE;
+          
+          input_report_abs(icn85xx_ts->input_dev, ABS_PRESSURE, pressure);
+        }
+        else
+          input_report_abs(icn85xx_ts->input_dev, ABS_PRESSURE, report_pressure);
+      }
+      
+      /* 
+       * Multi-touch down
+       */
+       
+      /* MT Slot */
+      input_mt_slot(icn85xx_ts->input_dev, position-1);
+      input_mt_report_slot_state(icn85xx_ts->input_dev, MT_TOOL_FINGER, true);
+      input_report_abs(icn85xx_ts->input_dev, ABS_MT_TOUCH_MAJOR, 1);
+
+      /* (ABS_MT) Pressure event 
+       *  If report_pressure is zero, report raw/mapped value.
+       *  If report_pressure is non-zero, report that explicit value.
+       */
+      if (report_pressure == 0)
+      {
+        /* FIXME: the following is a workaround/hack-fix for a bug in CTP fw
+         * where the last u8pressure before touch up spikes to 55.
+         */
+        if ( icn85xx_ts->point_info[position].u8Pressure == 55 )
+          icn85xx_ts->point_info[position].u8Pressure /= 10;
+        
+        pressure = (int)(icn85xx_ts->point_info[position].u8Pressure * PRESSURE_MULTIPLIER);
+        if ( pressure > MAX_ABS_PRESSURE ) /* upper bound */
+          pressure = MAX_ABS_PRESSURE;
+
+        input_report_abs(icn85xx_ts->input_dev, ABS_MT_PRESSURE, pressure);
+      }
+      else
+        input_report_abs(icn85xx_ts->input_dev, ABS_MT_PRESSURE, report_pressure);
+
+      input_report_abs(icn85xx_ts->input_dev, ABS_MT_POSITION_X, icn85xx_ts->point_info[position].u16PosX);
+      input_report_abs(icn85xx_ts->input_dev, ABS_MT_POSITION_Y, icn85xx_ts->point_info[position].u16PosY);
+      icn85xx_point_info("===position: %d, x = %d,y = %d, press = %d ====\n", position, icn85xx_ts->point_info[position].u16PosX,icn85xx_ts->point_info[position].u16PosY, icn85xx_ts->point_info[position].u8Pressure);
     }
-    
-    return 0;
+  }
+  
+  /* Sync events */
+  input_sync(icn85xx_ts->input_dev);
+
+  /* Cache current finger states as last finger states  */
+  for(position = 1; position < POINT_NUM + 1; position++)
+    finger_last[position] = finger_current[position];
+
+  return 0;
 }
 #endif
 
@@ -2440,7 +2493,7 @@ static int icn85xx_request_input_dev(struct icn85xx_ts_data *icn85xx_ts)
     // mt
     input_set_abs_params(icn85xx_ts->input_dev, ABS_MT_POSITION_X, 0, SCREEN_MAX_X, 0, 0);
     input_set_abs_params(icn85xx_ts->input_dev, ABS_MT_POSITION_Y, 0, SCREEN_MAX_Y, 0, 0);
-	input_set_abs_params(icn85xx_ts->input_dev, ABS_MT_PRESSURE, 0, 100, 0, 0);
+	input_set_abs_params(icn85xx_ts->input_dev, ABS_MT_PRESSURE, 0, 255, 0, 0);
     input_set_abs_params(icn85xx_ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
     input_set_abs_params(icn85xx_ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);  
     input_set_abs_params(icn85xx_ts->input_dev, ABS_MT_TRACKING_ID, 0, 255, 0, 0);
@@ -2584,6 +2637,8 @@ if (trans_addr == 1) {
 		icn85xx_trace("platform: %s\n", "CABO");
 #elif defined(CONFIG_PLAT_NXP4330_XANADU)
 		icn85xx_trace("platform: %s\n", "XANADU");
+#elif defined(CONFIG_PLAT_NXP4330_QUITO)
+    icn85xx_trace("platform: %s\n", "QUITO");
 #endif
 #endif
 		fwVersion = icn85xx_read_fw_Ver(firmware);

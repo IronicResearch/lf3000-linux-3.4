@@ -45,7 +45,7 @@ extern "C"
 
 		volatile U32 __Reserved[4];		///< 0x2B	:
 		volatile U32 GPIOxDETENB;		///< 0x3C	: IntPend Detect Enable Register
-		// @added charles 20121127 RTL¿¡´Â ÀÖ´Âµ¥ proto¿¡´Â ¾ø¾î¼­ Ãß°¡
+		// @added charles 20121127 RTLï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Âµï¿½ protoï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½î¼­ ï¿½ß°ï¿½
 		volatile U32 GPIOx_SLEW;					///< 0x40
 		volatile U32 GPIOx_SLEW_DISABLE_DEFAULT;    ///< 0x44
 		volatile U32 GPIOx_DRV1;                    ///< 0x48
@@ -187,6 +187,7 @@ CBOOL			NX_GPIO_GetOutputValue	( U32 ModuleIndex, U32 BitNumber );
 void			NX_GPIO_SetOutputValue32	( U32 ModuleIndex, U32 Value );
 U32				NX_GPIO_GetOutputValue32	( U32 ModuleIndex );
 CBOOL			NX_GPIO_GetInputValue		( U32 ModuleIndex, U32 BitNumber );
+NX_GPIO_PADPULL		NX_GPIO_GetPullMode ( U32 ModuleIndex, U32 BitNumber);
 void			NX_GPIO_SetPullMode ( U32 ModuleIndex, U32 BitNumber, NX_GPIO_PADPULL mode);
 void			NX_GPIO_SetPullSelect ( U32 ModuleIndex, U32 BitNumber, CBOOL enable);
 CBOOL			NX_GPIO_GetPullSelect ( U32 ModuleIndex, U32 BitNumber );

@@ -196,14 +196,14 @@ static void _hw_set_video_addr(struct nxp_mlc *me, struct nxp_video_buffer *buf)
 
 static void _hw_rgb_enable(struct nxp_mlc *me, bool enable)
 {
-    printk("%s: module %d, enable %d\n", __func__, me->id, enable);
+    pr_debug("%s: module %d, enable %d\n", __func__, me->id, enable);
     nxp_soc_disp_rgb_set_enable(me->id, RGB_0_LAYER, enable);
 }
 
 static void _hw_video_enable(struct nxp_mlc *me, bool enable)
 {
     // psw0523 debugging
-    printk("%s: module %d, enable %d\n", __func__, me->id, enable);
+    pr_debug("%s: module %d, enable %d\n", __func__, me->id, enable);
     nxp_soc_disp_video_set_enable(me->id, enable);
 }
 
@@ -213,7 +213,7 @@ static void _hw_configure_rgb(struct nxp_mlc *me)
     struct nxp_mlc_rgb_attr *attr = &me->rgb_attr;
     int layer = RGB_0_LAYER;
 
-    printk("%s %d: code(0x%x), w(%d), h(%d), pixelbyte(%d)\n", __func__, id,
+    pr_debug("%s %d: code(0x%x), w(%d), h(%d), pixelbyte(%d)\n", __func__, id,
             attr->format.code, attr->format.width, attr->format.height, _get_pixel_byte(attr->format.code));
     nxp_soc_disp_rgb_set_format(id, layer,
             attr->format.code,
@@ -224,7 +224,7 @@ static void _hw_configure_rgb(struct nxp_mlc *me)
     nxp_soc_disp_rgb_set_position(id, layer, 0, 0, false);
 
     // psw0523 debugging
-    printk("%s %d crop(%d:%d:%d:%d)\n",
+    pr_debug("%s %d crop(%d:%d:%d:%d)\n",
             __func__, id, attr->crop.left, attr->crop.top, attr->crop.width, attr->crop.height);
     nxp_soc_disp_rgb_set_clipping(id, layer, attr->crop.left, attr->crop.top, attr->crop.width, attr->crop.height);
 
@@ -242,7 +242,7 @@ static void _hw_configure_video(struct nxp_mlc *me)
             attr->format.width, attr->format.height);
 
     // psw0523 debugging
-    printk("%s %d: fw(%d), fh(%d), crop(%d:%d:%d:%d), priority(%d), format(0x%x)\n",
+    pr_debug("%s %d: fw(%d), fh(%d), crop(%d:%d:%d:%d), priority(%d), format(0x%x)\n",
             __func__, id, attr->format.width, attr->format.height,
             attr->crop.left, attr->crop.top, attr->crop.width, attr->crop.height,
             attr->priority, _convert_v4l2_to_nxp_format(attr->format.code));
@@ -264,8 +264,10 @@ static void _hw_configure_video(struct nxp_mlc *me)
 
     nxp_soc_disp_video_set_priority(id, attr->priority);
 
+#if !defined(CONFIG_NXP4330_LEAPFROG)
     /* layer enable */
     _hw_video_enable(me, true);
+#endif
 }
 
 static void _hw_enable(struct nxp_mlc *me, bool enable)
@@ -402,9 +404,18 @@ static void _update_vid_buffer(struct nxp_mlc *me)
         me->callback = nxp_soc_disp_register_irq_callback(me->id, _irq_callback, me);
         _hw_configure_video(me);
         me->vid_enabled = true;
+        me->preroll = 5;
     }
 
     _hw_set_video_addr(me, buf);
+
+#if defined(CONFIG_NXP4330_LEAPFROG)
+    if (me->preroll > 0) {
+    	me->preroll--;
+    	if (me->preroll == 0)
+	    	_hw_video_enable(me, true);
+	}
+#endif
 
     if (!me->enabled) {
         _hw_enable(me, true);
@@ -672,7 +683,8 @@ static int nxp_mlc_s_power(struct v4l2_subdev *sd, int on)
             me->vid_streaming = false;
             _hw_video_enable(me, false);
             pr_debug("%s: unregister irq callback\n", __func__);
-            nxp_soc_disp_unregister_irq_callback(me->id, me->callback);
+            if (me->callback)
+            	nxp_soc_disp_unregister_irq_callback(me->id, me->callback);
             me->callback = NULL;
             me->vid_enabled = false;
             spin_lock_irqsave(&me->vlock, flags);
@@ -941,7 +953,7 @@ static int nxp_mlc_s_stream(struct v4l2_subdev *sd, int enable)
 
     /* pr_debug("%s: enable %d, client %s, is_video %d\n", __func__, */
     /*         enable, client, is_video); */
-    printk("%s: enable %d, client %s, is_video %d\n", __func__,
+    pr_debug("%s: enable %d, client %s, is_video %d\n", __func__,
             enable, client, is_video);
 
     if (enable) {
@@ -961,7 +973,8 @@ static int nxp_mlc_s_stream(struct v4l2_subdev *sd, int enable)
             me->vid_streaming = false;
             _hw_video_enable(me, false);
             pr_debug("%s: unregister irq callback\n", __func__);
-            nxp_soc_disp_unregister_irq_callback(me->id, me->callback);
+            if (me->callback)
+            	nxp_soc_disp_unregister_irq_callback(me->id, me->callback);
             me->callback = NULL;
             me->vid_enabled = false;
             spin_lock_irqsave(&me->vlock, flags);
@@ -1088,7 +1101,7 @@ static int nxp_mlc_set_crop(struct v4l2_subdev *sd,
         return -EINVAL;
     }
 
-    printk("%s: pad(%d), crop(%d,%d,%d,%d)\n", __func__, crop->pad,
+    pr_debug("%s: pad(%d), crop(%d,%d,%d,%d)\n", __func__, crop->pad,
             crop->rect.left, crop->rect.top, crop->rect.width, crop->rect.height);
     *_crop = crop->rect;
 
@@ -1102,10 +1115,10 @@ static int nxp_mlc_set_crop(struct v4l2_subdev *sd,
                     true); /* waitsync */
     } else if (crop->pad == NXP_MLC_PAD_SOURCE && me->vid_enabled) {
         if (_crop->width > 0 && _crop->height > 0) {
-            printk("%s: source crop(%d:%d-%d:%d)\n", __func__, _crop->left, _crop->top, _crop->width, _crop->height);
+            pr_debug("%s: source crop(%d:%d-%d:%d)\n", __func__, _crop->left, _crop->top, _crop->width, _crop->height);
             nxp_soc_disp_video_set_crop(me->id, true, _crop->left, _crop->top, _crop->width, _crop->height, true);
         } else {
-            printk("%s: source crop off\n", __func__);
+            pr_debug("%s: source crop off\n", __func__);
             nxp_soc_disp_video_set_crop(me->id, false, 0, 0, 0, 0, true);
         }
     }

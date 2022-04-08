@@ -78,13 +78,13 @@
 #endif
 
 /* Primary */
-#define CFG_DISP_PRI_SCREEN_LAYER               1
+#define CFG_DISP_PRI_SCREEN_LAYER               0
 #define CFG_DISP_PRI_SCREEN_RGB_FORMAT          MLC_RGBFMT_A8R8G8B8
 #define CFG_DISP_PRI_SCREEN_PIXEL_BYTE	        4
 #define CFG_DISP_PRI_SCREEN_COLOR_KEY	        0x090909
 
 #define CFG_DISP_PRI_VIDEO_PRIORITY		2	// 0, 1, 2, 3
-#define CFG_DISP_PRI_BACK_GROUND_COLOR	     	0x000000FF
+#define CFG_DISP_PRI_BACK_GROUND_COLOR	     	0xFFFFFF
 
 #define CFG_DISP_PRI_MLC_INTERLACE              CFALSE
 
@@ -126,7 +126,7 @@
 /* Secondary */
 #define CFG_DISP_SEC_SCREEN_LAYER               1
 #define CFG_DISP_SEC_SCREEN_RGB_FORMAT          MLC_RGBFMT_A8R8G8B8
-#define CFG_DISP_SEC_SCREEN_PIXEL_BYTE	        2
+#define CFG_DISP_SEC_SCREEN_PIXEL_BYTE	        4
 #define CFG_DISP_SEC_SCREEN_COLOR_KEY	        0x090909
 
 #define CFG_DISP_SEC_VIDEO_PRIORITY		2	// 0, 1, 2, 3
@@ -183,7 +183,7 @@
  */
 #define	CFG_AUDIO_I2S0_MASTER_MODE				CTRUE	// CTRUE
 #define	CFG_AUDIO_I2S0_TRANS_MODE				0		// 0:I2S, 1:Left 2:Right justified */
-#define	CFG_AUDIO_I2S0_FRAME_BIT				48		// 32, 48
+#define	CFG_AUDIO_I2S0_FRAME_BIT				32		// 32, 48
 #define	CFG_AUDIO_I2S0_SAMPLE_RATE				32000
 
 #if defined(CONFIG_SND_CODEC_TC94B26)
@@ -222,9 +222,9 @@
 /*------------------------------------------------------------------------------
  * 	I2C
  */
-#define CFG_I2C0_CLK							400000
-#define CFG_I2C1_CLK							400000
-#define CFG_I2C2_CLK							400000
+#define CFG_I2C0_CLK							200000 //400000   //reducing the speed to make camera work
+#define CFG_I2C1_CLK							200000 //400000   //reducing the speed to make camera work
+#define CFG_I2C2_CLK							400000 //actual speed measured on scope ~380K
 
 /*------------------------------------------------------------------------------
  * 	SPI
@@ -313,6 +313,6 @@
 //                      ( _name_ , bw, tACS tCOS tACC tSACC tOCH tCAH, wm, rb, wb )
 CFG_SYS_STATICBUS_CONFIG( STATIC0 ,  8,    1,   1,   6,    6,   1,   1,  1,  0,  0 )		// 0x0000_0000
 CFG_SYS_STATICBUS_CONFIG( STATIC1 ,  8,    6,   6,  32,   32,   6,   6,  1,  0,  0 )		// 0x0400_0000
-CFG_SYS_STATICBUS_CONFIG(    NAND ,  8,    0,   4,   7,    1,   6,   0,  1,  0,  0 )		// 0x2C00_0000, tOCH, tCAH must be greter than 0
+CFG_SYS_STATICBUS_CONFIG(    NAND ,  8,    0,   1,   7,    1,   3,   1,  1,  0,  0 )		// 0x2C00_0000, tOCH, tCAH must be greter than 0
 
 #endif /* __CFG_MAIN_H__ */

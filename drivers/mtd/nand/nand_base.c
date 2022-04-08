@@ -1122,7 +1122,9 @@ static int nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 			      uint8_t *buf, int oob_required, int page)
 {
 	chip->read_buf(mtd, buf, mtd->writesize);
+#if !defined(CONFIG_NXP4330_LEAPFROG)
 	if (oob_required)
+#endif
 		chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
 	return 0;
 }
@@ -3398,6 +3400,17 @@ static void nand_decode_id(struct mtd_info *mtd, struct nand_chip *chip,
 	mtd->writesize = type->pagesize;
 	mtd->oobsize = mtd->writesize / 32;
 	*busw = type->options & NAND_BUSWIDTH_16;
+
+#if defined(CONFIG_NXP4330_LEAPFROG)
+	// Hack intended to catch LF carts w/ OTP NANDs.
+	if (   (mtd->erasesize < 0x10000)
+				&& (mtd->writesize < 0x800))
+	{
+		chip->ecc.mode = NAND_ECC_NONE;
+		pr_info("%s: LF cart detected\n", __func__);
+		return;
+	}
+#endif
 
 	/* All legacy ID NAND are small-page, SLC */
 	chip->bits_per_cell = 1;

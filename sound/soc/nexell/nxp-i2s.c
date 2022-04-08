@@ -47,7 +47,7 @@
 #define	I2S_BASEADDR			PHY_BASEADDR_I2S0
 #define	I2S_CH_OFFSET			0x1000
 #define	I2S_BUS_WIDTH			4	// Byte
-#define	I2S_PERI_BURST			4	// Byte
+#define	I2S_PERI_BURST		 	16	// Byte
 #define	I2S_MAX_CLOCK			166000000
 
 #define	I2S0_PRESETn 			(23)
@@ -171,7 +171,8 @@ static int set_sample_rate_clock(struct clk *clk, unsigned long request,
 	if (0 == dio)
 		goto done;
 
-#if defined(CONFIG_PLAT_NXP4330_BOGOTA) || defined(CONFIG_PLAT_NXP4330_CABO) || defined(CONFIG_PLAT_NXP4330_XANADU)
+#if defined(CONFIG_PLAT_NXP4330_BOGOTA) || defined(CONFIG_PLAT_NXP4330_CABO) \
+ || defined(CONFIG_PLAT_NXP4330_XANADU) || defined(CONFIG_PLAT_NXP4330_QUITO)
 	/* calculate clock divider from active PLL frequency */
 	rate = clk_set_rate(clk, clock);
 	div = rate / clock;
@@ -505,8 +506,10 @@ static int nxp_i2s_set_plat_param(struct nxp_i2s_snd_param *par, void *data)
 		unsigned int clkgen = nxp_cpu_periph_get_clock(clkidx, &clksrc, &clkdiv);
 		pr_debug("snd i2s: clk idx=%d, src=%d, div=%d, gen=%d\n", clkidx, clksrc, clkdiv, clkgen);
 		NX_CLKGEN_SetBaseAddress(clkidx, IO_ADDRESS(NX_CLKGEN_GetPhysicalAddress(clkidx)));
-#if defined(CONFIG_SND_CODEC_LFP100) || defined (CONFIG_SND_CODEC_TC94B26)
+#if defined(CONFIG_SND_CODEC_LFP100)
 		NX_CLKGEN_SetClockOutInv(clkidx, 0, 1);
+#elif defined (CONFIG_SND_CODEC_TC94B26)
+		NX_CLKGEN_SetClockOutInv(clkidx, 0, 0);
 #endif
 #if defined (CONFIG_SND_CODEC_TC94B26)
 		msleep(100);		/* let TC94B26 codec PLL startup */

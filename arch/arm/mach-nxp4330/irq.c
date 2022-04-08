@@ -47,7 +47,8 @@
 #define NXP_IRQ_PRIORITY_DMA            1
 #define NXP_IRQ_PRIORITY_EINT           1
 #define NXP_IRQ_PRIORITY_DISPLAY_UINT   2   // Display, Camera
-#define NXP_IRQ_PRIORITY_STORAGE        2   // SDHC, NAND
+#define NXP_IRQ_PRIORITY_STORAGE        3   // SDHC, NAND
+#define NXP_IRQ_PRIORITY_STREAM         3   // USB, Ethernet, Bluetooth
 #define NXP_IRQ_PRIORITY_AUDIO          4
 #define NXP_IRQ_PRIORITY_COPROCESSOR    5   // Video codec, 3D Accelerator, Scaler
 #define NXP_IRQ_PRIORITY_NOMAL_0        8
@@ -137,7 +138,7 @@ static u16 g_vic_priority [64] = {
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_CLKPWR_INTREQPWR
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_CLKPWR_ALIVEIRQ
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_CLKPWR_RTCIRQ
-	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_UART1
+	NXP_IRQ_PRIORITY_STREAM,		// IRQ_PHY_UART1
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_UART0
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_UART2
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_UART3
@@ -155,7 +156,7 @@ static u16 g_vic_priority [64] = {
 	NXP_IRQ_PRIORITY_AUDIO,			// IRQ_PHY_SPDIFRX
 	NXP_IRQ_PRIORITY_AUDIO,			// IRQ_PHY_SPDIFTX
 	NXP_IRQ_PRIORITY_SYS_TICK,		// IRQ_PHY_TIMER_INT0
-	NXP_IRQ_PRIORITY_SYS_TICK,		// IRQ_PHY_TIMER_INT1
+	NXP_IRQ_PRIORITY_HIGHEST,		// IRQ_PHY_TIMER_INT1
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_TIMER_INT2
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_TIMER_INT3
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_PWM_INT0
@@ -180,8 +181,8 @@ static u16 g_vic_priority [64] = {
 	NXP_IRQ_PRIORITY_COPROCESSOR,	// IRQ_PHY_CODA960_HOST
 	NXP_IRQ_PRIORITY_COPROCESSOR,	// IRQ_PHY_CODA960_JPG
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_GMAC
-	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_USB20OTG
-	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_USB20HOST
+	NXP_IRQ_PRIORITY_STREAM,		// IRQ_PHY_USB20OTG
+	NXP_IRQ_PRIORITY_STREAM,		// IRQ_PHY_USB20HOST
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_CAN0
 	NXP_IRQ_PRIORITY_NOMAL_0,		// IRQ_PHY_CAN1
 	NXP_IRQ_PRIORITY_EINT,			// IRQ_PHY_GPIOA
@@ -254,6 +255,13 @@ static void __vic_handler(unsigned int irq, struct irq_desc *desc)
 
 		writel_relaxed(0, (VIC0_INT_BASE + VIC_PL192_VECT_ADDR) );
 	}
+	else if (readl_relaxed(VIC0_INT_BASE + VIC_IRQ_STATUS) & (1<<IRQ_PHY_DMA1))
+	{
+		stat = (1<<IRQ_PHY_DMA1);
+		irq = IRQ_PHY_DMA1;
+
+		writel_relaxed(0, (VIC0_INT_BASE + VIC_PL192_VECT_ADDR) );
+	}		
 	else
 	{
 		/* Round Robin */
@@ -265,7 +273,7 @@ static void __vic_handler(unsigned int irq, struct irq_desc *desc)
 				irq = readl_relaxed(g_irq_base[irq_grp] + VIC_PL192_VECT_ADDR);
 				writel_relaxed(0, g_irq_base[irq_grp] + VIC_PL192_VECT_ADDR);
 
-				if ((irq == IRQ_PHY_USB20OTG) || (irq == IRQ_PHY_TIMER_INT1)) {
+				if ((irq == IRQ_PHY_USB20OTG) || (irq == IRQ_PHY_TIMER_INT1) || (irq == IRQ_PHY_DMA1)) {
 					continue;
 				}
 				break;

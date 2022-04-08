@@ -30,6 +30,8 @@
 #include <plat/lf3000_lcd.h>
 #include <linux/lf3000/gpio.h>
 
+/* SESTERS, just for testing data dump.  Add Kconfig entry when ready */
+#define CONFIG_I2S_DUMP_DATA
 
 #define ADC_LCD_CHAN		0		/* adc channel */
 #define ADC_TIMEOUT			1000	/* msec */
@@ -135,6 +137,9 @@ bool have_usb_power_option(void)
 		case LF3000_BOARD_BOGOTA_EXP_1:
 		case LF3000_BOARD_BOGOTA_EXP_2:
 		case LF3000_BOARD_BOGOTA_EXP_3:
+		case LF3000_BOARD_BOGOTA_EXP_4:
+		case LF3000_BOARD_BOGOTA_EXP_5:
+		case LF3000_BOARD_BOGOTA_EXP_6:
 		case LF3000_BOARD_CABO:
 		case LF3000_BOARD_R3K:
 		case LF3000_BOARD_XANADU:
@@ -225,6 +230,9 @@ enum lf2000_leapfrog_platform get_leapfrog_platform(void)
 		case LF3000_BOARD_BOGOTA_EXP_1:
 		case LF3000_BOARD_BOGOTA_EXP_2:
 		case LF3000_BOARD_BOGOTA_EXP_3:
+		case LF3000_BOARD_BOGOTA_EXP_4:
+		case LF3000_BOARD_BOGOTA_EXP_5:
+		case LF3000_BOARD_BOGOTA_EXP_6:
 			return BOGOTA;
 
 		default:
@@ -626,6 +634,9 @@ enum lf2000_lcd_size get_lcd_size(void)
 		case LF3000_BOARD_BOGOTA_EXP_1:
 		case LF3000_BOARD_BOGOTA_EXP_2:
 		case LF3000_BOARD_BOGOTA_EXP_3:
+		case LF3000_BOARD_BOGOTA_EXP_4:
+		case LF3000_BOARD_BOGOTA_EXP_5:
+		case LF3000_BOARD_BOGOTA_EXP_6:
 			return LCD_1024_600;
 
 		default:
@@ -732,6 +743,7 @@ static ssize_t sysfs_show_platform(struct device *dev,
 	case VALENCIA:
 		return sprintf(buf, "VALENCIA\n");
 	case BOGOTA:
+		return sprintf(buf, "BOGOTA\n");
 	case XANADU:
 		return sprintf(buf, "XANADU\n");
 	case UNKNOWN:
@@ -804,6 +816,79 @@ static ssize_t sysfs_store_wifi_power(struct device *dev,
 static DEVICE_ATTR(wifi_power, S_IRUGO | S_IWUGO, sysfs_show_wifi_power, sysfs_store_wifi_power);
 #endif //CONFIG_BCM43143
 
+
+#if defined(CONFIG_I2S_DUMP_DATA)
+int i2s_get_dump_data_remaining(void);
+void i2s_set_dump_data_count(int numbytes);
+static ssize_t sysfs_show_i2s_dump_data(struct device *dev,
+                                     struct device_attribute *attr,
+                                     char *buf)
+{
+	return sprintf(buf, "%u\n", i2s_get_dump_data_remaining());
+}
+
+static ssize_t sysfs_store_i2s_dump_data(struct device *dev,
+                                      struct device_attribute *attr,
+			              const char *buf,
+			              size_t count)
+{
+	int numbytes;
+	if(sscanf(buf, "%d", &numbytes) != 1)
+		return -EINVAL;
+	i2s_set_dump_data_count(numbytes);
+	return count;
+}
+
+static DEVICE_ATTR(i2s_dump_data, S_IRUGO | S_IWUGO, sysfs_show_i2s_dump_data, sysfs_store_i2s_dump_data);
+
+#define MAX_NUM_BYTES	(1024 * 8)
+char * i2s_get_output_filename(void);
+int i2s_set_output_filename(const char * szFileName);
+
+static ssize_t sysfs_show_i2s_filename(struct device *dev,
+                                     struct device_attribute *attr,
+                                     char *buf)
+{
+	return sprintf(buf, "%s\n", i2s_get_output_filename());
+}
+
+static ssize_t sysfs_store_i2s_filename(struct device *dev,
+                                      struct device_attribute *attr,
+			              const char *buf,
+			              size_t count)
+{
+	char str[count];
+	sscanf(buf, "%s", str);
+	i2s_set_output_filename(str);
+	return count;
+}
+
+static DEVICE_ATTR(i2s_filename, S_IRUGO | S_IWUGO, sysfs_show_i2s_filename, sysfs_store_i2s_filename);
+
+#endif //CONFIG_I2S_DUMP_DATA
+
+int tc94b26_set_locale(const char * locale);
+char * tc94b26_get_locale(void);
+static ssize_t sysfs_show_tc94b26_locale(struct device *dev,
+                                     struct device_attribute *attr,
+                                     char *buf)
+{
+	return sprintf(buf, "%s\n", tc94b26_get_locale());
+}
+
+static ssize_t sysfs_store_tc94b26_locale(struct device *dev,
+                                      struct device_attribute *attr,
+			              const char *buf,
+			              size_t count)
+{
+	char str[count];
+	sscanf(buf, "%s", str);
+	tc94b26_set_locale(str);
+	return count;
+}
+
+static DEVICE_ATTR(tc94b26_locale, S_IRUGO | S_IWUGO, sysfs_show_tc94b26_locale, sysfs_store_tc94b26_locale);
+
 static struct bus_type board_subsys = {
 	.name		= "board",
 	.dev_name	= "board",
@@ -832,7 +917,14 @@ static int __init init_board_sysfs(void)
 	if(!error)
 		error = device_create_file(board_subsys.dev_root, &dev_attr_wifi_power);
 #endif //CONFIG_BCM43143
-
+#if defined(CONFIG_I2S_DUMP_DATA)
+	if (!error)
+		error = device_create_file(board_subsys.dev_root, &dev_attr_i2s_dump_data);
+	if (!error)
+		error = device_create_file(board_subsys.dev_root, &dev_attr_i2s_filename);
+#endif
+	if (!error)
+		error = device_create_file(board_subsys.dev_root, &dev_attr_tc94b26_locale);
 	return error;
 }
 

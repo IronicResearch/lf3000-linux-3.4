@@ -167,6 +167,8 @@ void 		 nxp_soc_disp_device_reset_top	(void);
 int 		 nxp_soc_disp_device_enable_all_saved(int module, int enable);
 
 void 		 nxp_soc_disp_register_lcd_ops(int module, struct lcd_operation *pops);
+void 		 nxp_soc_disp_device_lcd_flip(int module, int flip);
+
 
 /*
  *

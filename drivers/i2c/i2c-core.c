@@ -1458,10 +1458,10 @@ static int i2c_default_probe(struct i2c_adapter *adap, unsigned short addr)
 	if (!((addr & ~0x07) == 0x30 || (addr & ~0x0f) == 0x50)
 	 && i2c_check_functionality(adap, I2C_FUNC_SMBUS_QUICK))
 		err = i2c_smbus_xfer(adap, addr, 0, I2C_SMBUS_WRITE, 0,
-				     I2C_SMBUS_QUICK, NULL);
+					 I2C_SMBUS_QUICK, NULL);
 	else if (i2c_check_functionality(adap, I2C_FUNC_SMBUS_READ_BYTE))
 		err = i2c_smbus_xfer(adap, addr, 0, I2C_SMBUS_READ, 0,
-				     I2C_SMBUS_BYTE, &dummy);
+  					 I2C_SMBUS_BYTE, &dummy);
 	else {
 		dev_warn(&adap->dev, "No suitable probing method supported\n");
 		err = -EOPNOTSUPP;
@@ -1603,6 +1603,18 @@ i2c_new_probed_device(struct i2c_adapter *adap,
 	}
 
 	info->addr = addr_list[i];
+	//judge if hi253 or hm2056 per addr
+	if(addr_list[i] == 0x20) {
+		strcpy(info->type, "HI253");
+		printk("%s, type: %s", __func__, info->type);
+	}
+
+	else if(addr_list[i] == 0x24) {
+		strcpy(info->type, "HM2056");
+		printk("%s, type: %s", __func__, info->type);
+	}
+
+	
 	return i2c_new_device(adap, info);
 }
 EXPORT_SYMBOL_GPL(i2c_new_probed_device);

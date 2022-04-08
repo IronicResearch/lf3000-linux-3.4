@@ -46,7 +46,11 @@ obj-$(CONFIG_NEXELL_DISPLAY_HDMI)		+= 	$(PROTOTYPE)/$(MODULES)/nx_hdmi.o
 obj-$(CONFIG_NEXELL_DISPLAY_HDMI)		+= 	$(PROTOTYPE)/$(MODULES)/nx_ecid.o
 obj-$(CONFIG_NEXELL_DISPLAY_MIPI)		+=  $(PROTOTYPE)/$(MODULES)/nx_mipi.o
 
+obj-$(CONFIG_NEXELL_DISPLAY_LCD)		+= 	$(PROTOTYPE)/$(MODULES)/nx_ssp.o
+obj-$(CONFIG_NEXELL_DISPLAY_LVDS)		+= 	$(PROTOTYPE)/$(MODULES)/nx_ssp.o
+
 obj-$(CONFIG_RTC_DRV_NEXELL)			+= 	$(PROTOTYPE)/$(MODULES)/nx_rtc.o
+obj-$(CONFIG_I2C_NEXELL)				+= 	$(PROTOTYPE)/$(MODULES)/nx_i2c.o
 
 obj-$(CONFIG_HAVE_PWM)					+= 	$(PROTOTYPE)/$(MODULES)/nx_pwm.o
 obj-$(CONFIG_ADC_NEXELL)				+= 	$(PROTOTYPE)/$(MODULES)/nx_adc.o

@@ -1244,6 +1244,7 @@ static struct i2c_board_info __initdata nxe1100_i2c_pmic_devs[] = {
 static int camera_power_enable(bool on)
 {
 	static bool enabled = false;
+	static bool first_enable = true;
 
 	printk("%s: %d, enabled=%d\n", __func__, on, enabled);
 	if (on == enabled)
@@ -1251,16 +1252,27 @@ static int camera_power_enable(bool on)
 
     if (on) {
     	printk("%s: Front Camera ON\n", __func__);
-        /* reset signal */
-    	gpio_set_value(FRONT_CAM_ENABLE_L, 0);
-        msleep(10);
-        gpio_set_value(FRONT_CAM_RESET_L, 1);
+    	gpio_direction_output(FRONT_CAM_ENABLE_L,0); //set cam_enable gpio as output and logic low
+		#ifdef CONFIG_VIDEO_HI257
+    		msleep(30);
+		#else
+    		if(first_enable){
+    			msleep(10);
+    			first_enable=false;
+    		}
+    		else
+   		/*FWBOG-522, increasing this delay to match datasheet. check if this helps with the black screen issue in mfg test*/
+        	msleep(105);  //original value 10mSec
+		#endif
+        gpio_set_value(FRONT_CAM_RESET_L, 1);  /* release signal */
         msleep(10);
     } else {
     	printk("%s: Front Camera OFF\n", __func__);
-        gpio_set_value(FRONT_CAM_RESET_L, 0);
+        gpio_set_value(FRONT_CAM_RESET_L, 0);  /* hold in reset */
         msleep(10);
-    	gpio_set_value(FRONT_CAM_ENABLE_L, 1);
+        gpio_direction_input(FRONT_CAM_ENABLE_L); /*set cam_enable gpio as input, makes pin high due to hardware pull ups. */
+
+    	//gpio_set_value(FRONT_CAM_ENABLE_L, 1);  /*do not set enable pin output high, it will damage camera*/
         msleep(10);
     }
     enabled = on;
@@ -1270,7 +1282,7 @@ static int camera_power_enable(bool on)
 static int camera_power_enable2(bool on)
 {
 	static bool enabled = false;
-
+	static bool first_enable2 = true;
 	printk("%s: %d, enabled=%d\n", __func__, on, enabled);
 	if (on == enabled)
 		return 0;
@@ -1282,16 +1294,28 @@ static int camera_power_enable2(bool on)
 
     if (on) {
     	printk("%s: Rear Camera ON\n", __func__);
-        /* reset signal */
-    	gpio_set_value(REAR_CAM_ENABLE_L, 0);
-        msleep(10);
-        gpio_set_value(REAR_CAM_RESET_L, 1);
+
+      	gpio_direction_output(REAR_CAM_ENABLE_L,0); //set cam_enable gpio as output
+
+		#ifdef CONFIG_VIDEO_HI257
+        	msleep(30);
+		#else
+        	if(first_enable2){
+				msleep(10);
+				first_enable2=false;
+			}
+			else
+		/*FWBOG-522, increasing this delay to match datasheet. check if this helps with the black screen issue in mfg test*/
+			msleep(105);  //original value 10mSec
+		#endif
+        gpio_set_value(REAR_CAM_RESET_L, 1);   /* release reset */
         msleep(10);
     } else {
     	printk("%s: Rear Camera OFF\n", __func__);
-        gpio_set_value(REAR_CAM_RESET_L, 0);
+        gpio_set_value(REAR_CAM_RESET_L, 0);  /* hold in reset*/
         msleep(10);
-    	gpio_set_value(REAR_CAM_ENABLE_L, 1);
+        gpio_direction_input(REAR_CAM_ENABLE_L); /*set cam_enable gpio as input, makes pin high due to hardware pull ups. */
+    	//gpio_set_value(REAR_CAM_ENABLE_L, 1);       /*do not set enable pin output high, it will damage camera*/
         msleep(10);
     }
     enabled = on;
@@ -1430,6 +1454,7 @@ struct nxp_mipi_csi_platformdata mipi_plat_data = {
 };
 #endif
 
+#ifdef CONFIG_VIDEO_HI253
 static struct i2c_board_info hi253_i2c_boardinfo[] = {
     {
         I2C_BOARD_INFO("HI253", 0x40>>1),
@@ -1446,6 +1471,82 @@ static struct nxp_v4l2_i2c_board_info sensor[] = {
         .i2c_adapter_id = 0,
     },
 };
+#endif
+
+#ifdef CONFIG_VIDEO_HI257
+static struct i2c_board_info hi257_i2c_boardinfo[] = {
+    {
+        I2C_BOARD_INFO("HI257", 0x40>>1),
+    },
+};
+
+static struct nxp_v4l2_i2c_board_info sensor[] = {
+    {
+        .board_info = &hi257_i2c_boardinfo[0],
+        .i2c_adapter_id = 1,
+    },
+    {
+        .board_info = &hi257_i2c_boardinfo[0],
+        .i2c_adapter_id = 0,
+    },
+};
+#endif
+
+#ifdef CONFIG_VIDEO_HM2056
+static struct i2c_board_info hm2056_i2c_boardinfo[] = {
+    {
+        I2C_BOARD_INFO("HM2056", 0x48>>1),
+    },
+};
+
+static struct nxp_v4l2_i2c_board_info sensor[] = {
+    {
+        .board_info = &hm2056_i2c_boardinfo[0],
+        .i2c_adapter_id = 1,
+    },
+    {
+        .board_info = &hm2056_i2c_boardinfo[0],
+        .i2c_adapter_id = 0,
+    },
+};
+#endif
+
+#ifdef CONFIG_VIDEO_HI253_HM2056
+static struct i2c_board_info hi253_i2c_boardinfo[] = {
+    {
+        I2C_BOARD_INFO("HI253", 0>>1),
+    },
+};
+
+static struct nxp_v4l2_i2c_board_info sensor[] = {
+    {
+        .board_info = &hi253_i2c_boardinfo[0],
+        .i2c_adapter_id = 1,
+    },
+    {
+        .board_info = &hi253_i2c_boardinfo[0],
+        .i2c_adapter_id = 0,
+    },
+};
+
+static struct i2c_board_info hm2056_i2c_boardinfo[] = {
+    {
+        I2C_BOARD_INFO("HM2056", 0>>1),
+    },
+};
+
+static struct nxp_v4l2_i2c_board_info hm2056_sensor[] = {
+    {
+        .board_info = &hm2056_i2c_boardinfo[0],
+        .i2c_adapter_id = 1,
+    },
+    {
+        .board_info = &hm2056_i2c_boardinfo[0],
+        .i2c_adapter_id = 0,
+    },
+};
+#endif
+
 
 static struct nxp_capture_platformdata capture_plat_data[] = {
     {
@@ -1455,7 +1556,11 @@ static struct nxp_capture_platformdata capture_plat_data[] = {
         .parallel = {
             /* for 656 */
             .is_mipi        = false,
+#ifdef CONFIG_VIDEO_HI257
+			.external_sync  = true,
+#else
             .external_sync  = false,
+#endif
             .h_active       = 640,
             .h_frontporch   = 7,
             .h_syncwidth    = 1,
@@ -1481,7 +1586,11 @@ static struct nxp_capture_platformdata capture_plat_data[] = {
         .parallel = {
             /* for 656 */
             .is_mipi        = false,
+#ifdef CONFIG_VIDEO_HI257
+			.external_sync  = true,
+#else
             .external_sync  = false,
+#endif
             .h_active       = 640,
             .h_frontporch   = 7,
             .h_syncwidth    = 1,
@@ -1875,6 +1984,7 @@ void lf3000_poweroff(void)
 		lfp100_set_power_off();
 #elif defined (CONFIG_TC7734_PMIC)
 		tc7734_set_power_off();
+		//FWBOG-299 tc7734_set_power_off() sets OFF mode if no USB connected, stby mode if USB connected
 #else
 #error Shutdown not defined
 #endif
@@ -1885,7 +1995,9 @@ void lf3000_poweroff(void)
 #if defined(CONFIG_SOC_LFP100)
 		lfp100_set_power_standby();
 #elif defined (CONFIG_TC7734_PMIC)
-		tc7734_set_power_standby();
+		tc7734_set_power_off();
+		//FWBOG-299 tc7734_set_power_off() sets OFF mode if no USB connected, stby mode if USB connected
+
 #else
 #error Shutdown not defined
 #endif
@@ -2095,7 +2207,14 @@ void __init nxp_board_devices_register(void)
 #endif
 
 #if defined(CONFIG_V4L2_NEXELL) || defined(CONFIG_V4L2_NEXELL_MODULE)
-    printk("plat: add device nxp-v4l2\n");
+#if 1
+	camera_set_clock(24000000);
+	camera_power_enable(1);
+	camera_power_enable2(1);
+	printk("plat: set camera clk and power\n");
+#endif
+	
+	printk("plat: add device nxp-v4l2\n");
     platform_device_register(&nxp_v4l2_dev);
 #endif
 

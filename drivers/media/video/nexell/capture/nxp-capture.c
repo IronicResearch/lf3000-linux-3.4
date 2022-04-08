@@ -1,4 +1,4 @@
-#define DEBUG 0
+/* #define DEBUG 0 */
 
 #include <linux/kernel.h>
 #include <linux/list.h>
@@ -165,7 +165,7 @@ static void _hw_child_enable(struct nxp_capture *me, u32 child, bool on)
     }
 
     if (me->clip_enable != clip_enable || me->deci_enable != deci_enable) {
-        printk("%s: module %d --> changed clip %d/%d, deci %d/%d\n",
+        pr_debug("%s: module %d --> changed clip %d/%d, deci %d/%d\n",
                 __func__, me->module, clip_enable, me->clip_enable, deci_enable, me->deci_enable);
         if (clip_enable || deci_enable) {
             NX_VIP_SetInterruptEnableAll(me->module, CFALSE);
@@ -371,6 +371,10 @@ static void _set_sensor_mipi_info(int module, int is_mipi)
         _sensor_info[module].is_mipi = is_mipi;
 }
 
+static const unsigned short normal_i2c[] = {
+	0x20,0x24,I2C_CLIENT_END};
+
+
 static struct v4l2_subdev *
 _register_sensor(struct nxp_capture *me,
         struct nxp_v4l2_i2c_board_info *board_info)
@@ -398,7 +402,7 @@ _register_sensor(struct nxp_capture *me,
     }
 
     sensor = v4l2_i2c_new_subdev_board(me->get_v4l2_device(me),
-            adapter, board_info->board_info, NULL);
+            adapter, board_info->board_info, normal_i2c);
     if (!sensor) {
         pr_err("%s: unable to register subdev %s\n",
                 __func__, board_info->board_info->type);

@@ -1022,4 +1022,12 @@ config TOUCHSCREEN_ELAN_KTF2K_7INCH
 
 	  If unsure, say N.
 
+config TOUCHSCREEN_VIRTUAL_TS
+	tristate "Virtual Touchscreen driver"
+	default n
+	help
+	  Say Y here to enable the virtual touchscreen.
+
+	  If unsure, say N.
+
 endif

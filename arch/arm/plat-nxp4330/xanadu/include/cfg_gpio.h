@@ -209,5 +209,6 @@
 #include <../../glasgow/include/cfg_gpio_glasgow_beta.h>
 #include <../../r3k/include/cfg_gpio_r3k.h>
 #include <../../xanadu/include/cfg_gpio_xanadu_alpha.h>
+#include <../../quito/include/cfg_gpio_quito_alpha.h>
 
 #endif	/* __CFG_GPIO_H__ */

@@ -678,7 +678,7 @@ int nand_ecc_layout_hwecc(struct mtd_info *mtd)
 		layout->oobavail = oobfree->length;
 
     	mtd->oobavail = oobfree->length;
-		printk("hw ecc %2d bit, oob %3d, bad '5', ecc 0~4,6~%d (%d), free %d~%d (%d) ",
+		printk(KERN_INFO "hw ecc %2d bit, oob %3d, bad '5', ecc 0~4,6~%d (%d), free %d~%d (%d) ",
 			ECC_HW_BITS, oobsize, ecctotal+1-1, ecctotal, oobfree->offset,
 			oobfree->offset+oobfree->length-1, oobfree->length);
 	} else {
@@ -692,7 +692,7 @@ int nand_ecc_layout_hwecc(struct mtd_info *mtd)
 			eccpos[i] = n;
 
     	mtd->oobavail = oobfree->length;
-		printk("hw ecc %2d bit, oob %3d, bad '0,1', ecc %d~%d (%d), free 2~%d (%d) ",
+		printk(KERN_INFO "hw ecc %2d bit, oob %3d, bad '0,1', ecc %d~%d (%d), free 2~%d (%d) ",
 			ECC_HW_BITS, oobsize, oobfree->offset+oobfree->length, n-1,
 			ecctotal, oobfree->length+2-1, oobfree->length);
 	}
@@ -703,7 +703,7 @@ int nand_ecc_layout_hwecc(struct mtd_info *mtd)
 	return ret;
 }
 
-int nand_hw_ecc_init_device(struct mtd_info *mtd)
+int nand_hw_ecc_init_device(struct mtd_info *mtd, int hw_ecc_mode)
 {
 	struct nxp_nand *nxp = mtd_to_nxp(mtd);
 	struct nand_chip *chip = mtd->priv;
@@ -739,7 +739,7 @@ int nand_hw_ecc_init_device(struct mtd_info *mtd)
      *
      *  Page 8192 Byte + 436 Byte (MLC)
 	 */
-	switch (ECC_HW_BITS) {
+	switch (hw_ecc_mode) {
 	case  4: eccbyte =   7, eccidx = 13, eccmode = NX_MCUS_4BITECC;
 			if (512 != eccsize) goto _ecc_fail;
 			break;
@@ -792,7 +792,7 @@ int nand_hw_ecc_init_device(struct mtd_info *mtd)
 	return 0;
 
 _ecc_fail:
-	printk("Fail: not support ecc %d bits for pagesize %d !!!\n", ECC_HW_BITS, eccsize);
+	printk(KERN_ERR "Fail: not support ecc %d bits for pagesize %d !!!\n", ECC_HW_BITS, eccsize);
 	return -EINVAL;
 }
 

@@ -1,3 +1,15 @@
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/sched.h>
+#include <linux/init.h>
+#include <mach/platform.h>
+#include <linux/platform_device.h>
+
+#include <mach/devices.h>
+#include <mach/soc.h>
+#include "display_4330.h"
+
 #include <linux/delay.h>
 #include <nx_ssp.h>
 
@@ -9,9 +21,7 @@ static int spi_channel = 1;	// FIXME
 static int gpio_port  = 4;	// FIXME
 static int gpio_pin	= 15;	// FIXME
 
-#if 0	/* 10apr14 Experiment with eliminating spi_lcd_init() */
-		/*			and spi_lcd_setup() */
-#if 1	/* 10apr14 */
+#if 0	/* 10apr14 */
 static void print_0xc005c000(void)
 {
 	U32 * p = (U32 *)0xc005c000;
@@ -26,11 +36,11 @@ static void print_0xc005c000(void)
 }
 #endif	/* 10apr14 */
 
-static void spi_lcd_init(void)
+void spi_lcd_init(void)
 {
 	printk(KERN_INFO "%s: spi_channel: %d, gpio_port:%d, gpio_pin:%d\n",
 		__func__, spi_channel, gpio_port, gpio_pin);
-#if 1	/* 10apr14 */
+#if 0	/* 10apr14 */
 	printk(KERN_INFO "%s: Channel %d physaddr: 0x%x, ioaddr 0x%x\n",
 		__func__, spi_channel, 
 		(unsigned int)NX_SSP_GetPhysicalAddress(spi_channel),
@@ -93,11 +103,7 @@ static void spi_lcd_init(void)
     printk(KERN_INFO "%s: CR0=%08x\n", __func__, NX_SSP_Get_SSPCR0(spi_channel));
     printk(KERN_INFO "%s: CR1=%08x\n", __func__, NX_SSP_Get_SSPCR1(spi_channel));
     printk(KERN_INFO "%s: SR =%08x\n", __func__, NX_SSP_Get_SSPSR(spi_channel));
-#if 1	/* 10apr14 */
-	print_0xc005c000();
-#endif	/* 10apr14 */
 }
-#endif	/* 10apr14 */
 
 static void spi_lcd_bitbang(u32 val, int len)
 {
@@ -243,17 +249,28 @@ static u16 spi_lcd_read24(u8 reg)
 #endif
 
 
-#if 0	/* 10apr14 Experiment with eliminating calls to this routine */
-static void spi_lcd_setup(void)
+void spi_lcd_setup(void)
 {
 }
-#endif	/* 10apr14 */
 
-static void spi_lcd_flip(int module, int flip)
+void spi_lcd_flip(int module, int flip)
 {
+#if defined(CONFIG_PLAT_NXP4330_CABO)
 	// ILI6480G2
 	spi_lcd_write(0x01, (flip) ? 0x1C : 0x1F);
 
 	// HX8257
 	spi_lcd_write24(0x01, (flip) ? 0x7846 : 0x7840);
+#endif
+
+#if defined(CONFIG_PLAT_NXP4330_BOGOTA)
+	// HX8282
+	spi_lcd_write(0x00, (flip) ? 0x3D : 0x0D);
+#endif
+
+#if defined(CONFIG_PLAT_NXP4330_QUITO)
+	/* FIXME: may need corrections */
+	// ILI6480G2
+	spi_lcd_write(0x01, (flip) ? 0x1C : 0x1F);
+#endif
 }

@@ -386,7 +386,7 @@ int32_t dwc_otg_handle_session_req_intr(dwc_otg_core_if_t * core_if)
 	DWC_DEBUGPL(DBG_ANY, "++Session Request Interrupt++\n");
 
 	if (dwc_otg_is_device_mode(core_if)) {
-		DWC_PRINTF("SRP: Device mode\n");
+		DWC_PRINTF(KERN_NOTICE "SRP: Device mode\n");
 
         // psw0523 test for charging mode
 #if 0
@@ -398,7 +398,7 @@ int32_t dwc_otg_handle_session_req_intr(dwc_otg_core_if_t * core_if)
 #endif
 	} else {
 		hprt0_data_t hprt0;
-		DWC_PRINTF("SRP: Host mode\n");
+		DWC_PRINTF(KERN_NOTICE "SRP: Host mode\n");
 
 		/* Turn on the port power bit. */
 		hprt0.d32 = dwc_otg_read_hprt0(core_if);

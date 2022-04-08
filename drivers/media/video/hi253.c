@@ -10,7 +10,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG 1
+/* #define DEBUG 1 */
 
 #include <linux/i2c.h>
 #include <linux/delay.h>
@@ -28,6 +28,8 @@
 #else
 #define PLLX(x)		(x | 0x03)
 #endif
+#define IS_PLL_2X	(PLLX(0x00) == 0x03)
+#define IS_PLL_1_5X	(PLLX(0x00) == 0x02)
 
 #define FLIP(x)		(x | 0x03)
 #include "lf2000/hynix_yac_regs.h"
@@ -255,7 +257,7 @@ static int hi253_set_frame_size(struct v4l2_subdev *sd, int mode, int width, int
 {
     struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-    printk("%s\n", __func__);
+    pr_debug("%s\n", __func__);
 
     if (width > 800 || height > 600)
         return hi253_write_regs(client, (unsigned char(*)[3])HI253_Capture_UXGA, ARRAY_SIZE(HI253_Capture_UXGA));
@@ -317,7 +319,7 @@ static int hi253_s_fmt(struct v4l2_subdev *sd,
     struct i2c_client *client = v4l2_get_subdevdata(sd);
     char default_vdoctl2;
     
-    printk("==========> %s\n", __func__);
+    pr_debug("==========> %s\n", __func__);
     if (!state->inited) {
         pr_err("%s: device is not initialized!!!\n", __func__);
         return -EINVAL;
@@ -328,7 +330,7 @@ static int hi253_s_fmt(struct v4l2_subdev *sd,
        return -EINVAL;
     }
     
-    printk("%s: vidoctl2 default = 0x%02x\n", __func__, default_vdoctl2);
+    pr_debug("%s: vidoctl2 default = 0x%02x\n", __func__, default_vdoctl2);
     
 	// Clamp format size to one of native sensor sizes
     hi253_clamp_format_size(_fmt);
@@ -336,10 +338,10 @@ static int hi253_s_fmt(struct v4l2_subdev *sd,
     pr_debug("%s: %dx%d\n", __func__, _fmt->width, _fmt->height);
     state->width = _fmt->width;
     state->height = _fmt->height;
-    printk("%s: mode %d, %dx%d\n", __func__, state->mode, state->width, state->height);
+    pr_debug("%s: mode %d, %dx%d\n", __func__, state->mode, state->width, state->height);
     err = hi253_set_frame_size(sd, state->mode, state->width, state->height);
 
-    printk("%s: %s\n", __func__, sd->name);
+    pr_debug("%s: %s\n", __func__, sd->name);
     
     if (strstr(sd->name, "0-0020"))
     	hi253_modify(client, WINDOW_PAGE, VDOCTL2, default_vdoctl2, 0x00);
@@ -458,7 +460,7 @@ static int hi253_mode_change(struct v4l2_subdev *sd, int value)
     struct hi253_state *state = to_state(sd);
     int err = 0;
 
-    printk("%s: mode %d\n", __func__, value);
+    pr_debug("%s: mode %d\n", __func__, value);
 
     if (unlikely(value < PREVIEW_MODE || value > CAPTURE_MODE)) {
         pr_err("%s: invalid value(%d)\n", __func__, value);
@@ -486,7 +488,7 @@ static int hi253_s_ctrl(struct v4l2_ctrl *ctrl)
     int value = ctrl->val;
     int err = 0;
 
-    printk("%s: id(0x%x), value(%d)\n", __func__, ctrl->id, value);
+    pr_debug("%s: id(0x%x), value(%d)\n", __func__, ctrl->id, value);
 
     switch (ctrl->id) {
 		case V4L2_CID_BRIGHTNESS:
@@ -642,7 +644,7 @@ static int hi253_initialize_ctrls(struct hi253_state *state)
 
     state->sd.ctrl_handler = &state->handler;
     if (state->handler.error) {
-        printk("%s: ctrl handler error(%d)\n", __func__, state->handler.error);
+        pr_err("%s: ctrl handler error(%d)\n", __func__, state->handler.error);
         v4l2_ctrl_handler_free(&state->handler);
         return -1;
     }
@@ -668,7 +670,7 @@ static int hi253_init(struct v4l2_subdev *sd, u32 val)
         if (!state->inited)
             return 0;
         hi253_modify(client, WINDOW_PAGE, PWRCTL, 0x01, 0x00); // soft sleep
-        printk("hi253_init exit: %s, readback errors = %d, retry attempts = %d\n", sd->name, state->readback_errors, state->retry_errors);
+        pr_info("hi253_init exit: %s, readback errors = %d, retry attempts = %d\n", sd->name, state->readback_errors, state->retry_errors);
         state->readback_errors = 0;
         state->retry_errors = 0;
     	state->inited = false;
@@ -676,7 +678,7 @@ static int hi253_init(struct v4l2_subdev *sd, u32 val)
     }
 
     if (!state->inited) {
-        printk("hi253_init: %s\n", sd->name);
+        pr_info("hi253_init: %s\n", sd->name);
         hi253_modify(client, WINDOW_PAGE, PWRCTL, 0x02, 0x00); // soft reset
         hi253_modify(client, WINDOW_PAGE, PWRCTL, 0x00, 0x02);
         if(hi253_connected_check(client) < 0) {
@@ -696,7 +698,7 @@ static int hi253_init(struct v4l2_subdev *sd, u32 val)
 
 static int hi253_s_power(struct v4l2_subdev *sd, int on)
 {
-    printk("hi253_s_power: %s: %d\n", sd->name, on);
+    pr_debug("hi253_s_power: %s: %d\n", sd->name, on);
     hi253_init(sd, on);
     return 0;
 }
@@ -725,7 +727,7 @@ static int _link_setup(struct media_entity *entity,
         const struct media_pad *local,
         const struct media_pad *remote, u32 flags)
 {
-    printk("%s: entered\n", __func__);
+    pr_debug("%s: entered\n", __func__);
     return 0;
 }
 

@@ -30,6 +30,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/dma-mapping.h>
 #include <linux/amba/pl022.h>
+#include <linux/wl12xx.h>
 
 /* nexell soc headers */
 #include <mach/platform.h>
@@ -1806,6 +1807,45 @@ static struct dw_mci_board _dwmci2_data = {
 #endif /* CONFIG_MMC_DW */
 
 /*------------------------------------------------------------------------------
+ * TI WIFI module
+ */
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)
+
+struct wl12xx_platform_data nxp4430_wlan_data;
+
+static void wl_set_power(u32 slot_id, u32 on)
+{
+	if (on) {
+		printk("WIFI_RESET: ON\n");
+		gpio_set_value(WIFI_RESET, 1);
+		mdelay(70);
+	}
+	else
+	{
+		printk("WIFI_RESET: OFF\n");
+		gpio_set_value(WIFI_RESET, 0);
+	}
+}
+
+static void wl12xx_init()
+{
+	struct device *dev;
+	struct omap_mmc_platform_data *pdata;
+
+	nxp4430_wlan_data.irq = gpio_to_irq(WIFI_HOST_WAKE);
+	nxp4430_wlan_data.platform_quirks = WL12XX_PLATFORM_QUIRK_EDGE_IRQ;
+	if(wl12xx_set_platform_data(&nxp4430_wlan_data))
+		pr_err("error setting wl12xx data\n");
+
+	_dwmci2_data.setpower = wl_set_power;
+
+
+	return;
+}
+
+#endif
+
+/*------------------------------------------------------------------------------
  * USB HSIC power control.
  */
 int nxp_hsic_phy_pwr_on(struct platform_device *pdev, bool on)
@@ -2215,6 +2255,11 @@ void __init nxp_board_devices_register(void)
 
      	printk("\nplat: register bq24250 chip\n");
       	i2c_register_board_info(BQ24250_I2C_BUS, &bq24250_i2c_device, 1);
+#endif
+
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)
+	printk("plat: add device wl12xx\n");
+	wl12xx_init();
 #endif
 
 	/* END */

@@ -30,7 +30,7 @@ static struct nxp_fb_plat_data fb0_plat_data = {
 	.module			= CONFIG_FB0_NEXELL_DISPOUT,
 	.layer			= CFG_DISP_PRI_SCREEN_LAYER,
 	.format			= CFG_DISP_PRI_SCREEN_RGB_FORMAT,
-	.bgcolor		= 0x0000FF, //CFG_DISP_PRI_BACK_GROUND_COLOR,
+	.bgcolor		= CFG_DISP_PRI_BACK_GROUND_COLOR,
 	.bitperpixel	= CFG_DISP_PRI_SCREEN_PIXEL_BYTE * 8,
 	.x_resol		= CFG_DISP_PRI_RESOL_WIDTH,
 	.y_resol		= CFG_DISP_PRI_RESOL_HEIGHT,
@@ -38,7 +38,8 @@ static struct nxp_fb_plat_data fb0_plat_data = {
 	.buffers		= 3,
 	.skip_pan_vsync	= 1,
 	#elif defined(CONFIG_NXP4330_LEAPFROG)
-	.buffers		= 4,
+	.buffers		= 6,
+	.skip_pan_vsync	= 1,
 	#else
 	.buffers		= 2,
 	#endif

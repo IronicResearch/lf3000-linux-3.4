@@ -19,7 +19,7 @@
 #include <linux/delay.h>
 #include <mach/soc.h>
 // #include "tu_drvs.h"
-#include <mach/tu_drvs.h>
+#include <plat/tu_drvs.h>
 
 static int fwVersion[4] = {0}; /* used to store fw version x.x.x.x */
 

@@ -71,13 +71,23 @@
 #define TC7734_INT_ATIL		0x80
 
 #define TC7734_STATE2_CHG_MASK	(3 << 4)
-#define TC7734_STATE2_CHG	(1 << 4)
+#define TC7734_STATE2_CHG		(1 << 4)
 #define TC7734_STATE2_DISCHG	(1 << 5)
+#define TC7734_STATE2_SFTRST	(1 << 7)
 
 #define TC7734_STATE2_DCP_EN	0x01
 #define TC7734_STATE2_CDP_EN	0x02
 #define TC7734_STATE2_SDP_EN	0x04
 #define TC7734_STATE2_CHG_EN	0x08
+
+#define TC7734_STAT3_NO_TOUT 		0<<6
+#define TC7734_STAT3_PRECHG_TOUT 	1<<6
+#define TC7734_STAT3_CHG_TOUT 		2<<6
+#define TC7734_STAT3_CHG_WAITING	3<<6
+#define TC7734_STAT3_TOUT_MASK 		0x03<<6
+#define TC7734_STAT3_CGED1 			1<<5
+#define TC7734_STAT3_CHARGE_COMPLETE 0x0e
+#define TC7734_STAT3_CGMD_MASK		3<<1
 
 #define TC7734_CHGCFG5_USBILIM_MASK	0xF
 #define TC7734_CHGCFG5_USBILIM_DEFAULT	0
@@ -113,6 +123,15 @@
 #define TC7734_LEDD_PS      (1<<7)
  
 /* GPIO configuration */
+
+/* Charger type based default charging current values */
+enum charging_currents {
+	SDP_CHARGING_CURRENT = 0, //500mA - charging is disabled for this case.
+	CDP_CHARGING_CURRENT = 1, //1000mA
+	DCP_CHARGING_CURRENT = 2, //1500mA
+	BATTERY_NO_CURRENT = 3, // Unit is on battery
+	NO_CHARGING_CURRENT = 4, //Charging is disabled
+};
 
 struct tc7734_chip {
 	wait_queue_head_t wait;
@@ -153,9 +172,9 @@ int  tc7734_set_vbus_draw(unsigned int mA);
 int  tc7734_set_charger_current(unsigned int mA);
 void tc7734_standby(void);
 int  tc7734_get_num_registers(void);
-unsigned int tc7734_is_usb_powered(void);
+int tc7734_is_usb_powered(void);
 void tc7734_backlight_off(void);
 unsigned char tc7734_get_pmic_rev(void);
-
+enum charging_currents tc7734_get_default_charger_current(void);
 
 #endif /* TC7734_H */

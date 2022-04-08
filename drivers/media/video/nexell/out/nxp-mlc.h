@@ -118,6 +118,7 @@ struct nxp_mlc {
 
     /* irq callback */
     struct disp_irq_callback *callback;
+    int preroll;
 
 };
 

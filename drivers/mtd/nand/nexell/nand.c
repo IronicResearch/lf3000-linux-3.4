@@ -41,6 +41,11 @@
 #include <mach/soc.h>
 
 #include "nand_ecc.h"
+#include "../../mtdcore.h"
+#include <linux/gpio.h>
+#include <linux/lf3000/gpio.h>
+#include "../../ubi/ubi-media.h"
+#define NAND_CART_DETECT_LEVEL 0
 
 #if	(0)
 #define TM_DBGOUT(msg...)		{ printk(KERN_INFO "nand: " msg); }
@@ -327,6 +332,10 @@ static int nexell_nand_timing_set(struct mtd_info *mtd)
 	ret = onfi_get_async_timing_mode(chip);
 	if (ret == ONFI_TIMING_MODE_UNKNOWN)
 	{
+#ifdef CONFIG_NXP4330_LEAPFROG
+		printk(KERN_INFO "nexell_nand_timing_set use default timing\n");
+		return 0;
+#endif
 		NX_MCUS_SetNANDBUSConfig
 		(
 			 0, /* NF */
@@ -494,7 +503,7 @@ static int nand_ecc_layout_swbch(struct mtd_info *mtd)
 	int ecctotal = chip->ecc.total;
 	int oobsize	 = mtd->oobsize;
 
-	printk("sw bch ecc %d bit, oob %2d, bad '0,1', ecc %d~%d (%d), free %d~%d (%d) ",
+	printk(KERN_INFO "sw bch ecc %d bit, oob %2d, bad '0,1', ecc %d~%d (%d), free %d~%d (%d) ",
 		ECC_BCH_BITS, oobsize, oobfree->offset+oobfree->length, oobsize-1, ecctotal,
 		oobfree->offset, oobfree->length + 1, oobfree->length);
 
@@ -530,7 +539,7 @@ static int nand_resume(struct platform_device *pdev)
 	chip->select_chip(mtd, 0);
 
 #if defined (CONFIG_MTD_NAND_ECC_HW)
-	nand_hw_ecc_init_device(mtd);
+	nand_hw_ecc_init_device(mtd, ECC_HW_BITS);
 #endif
 
 	nexell_nand_timing_set(mtd);
@@ -597,6 +606,473 @@ uint32_t wait_for_location_done(struct mtd_info *mtd)
 }
 #endif
 
+static int nand_remove(struct platform_device *pdev)
+{
+	struct nxp_nand  *nxp  = platform_get_drvdata(pdev);
+	struct mtd_info  *mtd  = &nxp->mtd;
+	int ret = 0;
+
+	nand_release(mtd);
+	if (nxp->irq)
+		free_irq(nxp->irq, nxp);
+#ifdef CONFIG_NAND_RANDOMIZER
+	if (nxp->randomize_buf)
+		kfree (nxp->randomize_buf);
+#endif
+#ifdef CONFIG_MTD_NAND_VERIFY_WRITE
+	if (nxp->verify_page)
+		kfree (nxp->verify_page);
+#endif
+#if defined (CONFIG_MTD_NAND_ECC_HW)
+	ret = nand_hw_ecc_fini_device(mtd);
+#endif
+	kfree(nxp);
+
+	return 0;
+}
+
+/* This routine examines the nand's ID bytes and extracts from them and saves
+ * lots of information about the nand's geometry and the amount of error
+ * correction that it needs.
+ */
+static int lf2000_nand_init_size(struct mtd_info *mtd,
+				 struct nand_chip *chip,
+				 u8 *id_data)
+{
+	int extid;
+	int busw;
+
+	printk(KERN_INFO "%s: id bytes: "
+				 "%02x %02x %02x %02x %02x %02x %02x %02x\n",
+		__FUNCTION__,
+		id_data[0], id_data[1], id_data[2], id_data[3],
+		id_data[4], id_data[5], id_data[6], id_data[7]);
+
+		/* The 3rd id byte holds MLC / multichip data */
+	chip->cellinfo = id_data[2];
+		/* The 4th id byte has sizes of page, oob, and eraseblock */
+	extid = id_data[3];
+
+		/* Leapfrog uses at least 2 NAND devices that emit 6 ID bytes
+		 * which have non-traditional field definitions.
+		 * One of these is a Samsung K9GAG08U0E.
+ 		 * The other is a Hynix H27UAG8T2B.
+		 *
+		 * We first check if the 3rd ID byte indicates that a cell contains
+		 * more than 1 bit (2 levels), if the 8 ID bytes in id_data[] start to
+		 * repeat after 6 bytes (i.e., if id_data[0] == id_data[6] and
+		 * id_data[1] == id_data[7]).
+		 * If not, or if the manufacturer is not Samsung or Hynix, we interpret
+		 * the ID bytes in the traditional way.
+		 * If they do, we interpret a Samsung nand's fields one way and Hynix
+		 * another way.
+		 */
+	if (   (chip->cellinfo & NAND_CI_CELLTYPE_MSK)
+		&& (id_data[5] != 0x00)
+		&& ((id_data[0] == id_data[6]) && (id_data[1] == id_data[7]))
+		&& (   (id_data[0] == NAND_MFR_SAMSUNG)
+			|| (id_data[0] == NAND_MFR_HYNIX)) )
+	{
+		int ecc_level;
+
+			/* no subpage writes on these MLC NANDs */
+		//chip->options	   |= NAND_NO_SUBPAGE_WRITE;
+		//chip->block_bad		= nand_block_bad_first_or_last;
+		//chip->block_markbad	= nand_block_markbad_first_and_last;
+		//chip->scan_bbt		= nand_big_mlc_bbt;
+
+		/* The 5th ecc byte indicates required ECC level */
+		ecc_level = (id_data[4] >> 4) & 0x07;
+
+			/* Calc pagesize */
+		mtd->writesize = 2048 << (extid & 0x03);
+		if (id_data[0] == NAND_MFR_SAMSUNG)
+		{
+			/* Calc oobsize */
+			/* NOTE: oobsize is indicated by bits 6, 3, and 2
+			 * of the 4th ID byte:
+			 * bits 7654.3210   HEX	  Description
+			 *		x0xx.00xx  0x00 : reserved
+			 *		x0xx.01xx  0x04 : 128 bytes
+			 *		x0xx.10xx  0x08 : 218 bytes
+			 *		x0xx.11xx  0x0C : 400 bytes
+			 *		x1xx.00xx  0x40 : 436 bytes
+			 *		x1xx.01xx  0x44 : 512 bytes
+			 *		x1xx.10xx  0x48 : 640 bytes
+			 *		x1xx.11xx  0x4C : reserved
+			 *
+			 * clear the unused bits, leaving only 6, 3, and 2
+			 */
+			switch (extid & 0x4C) {
+			case 0x04:	mtd->oobsize = 128;	break;
+			case 0x08: 	mtd->oobsize = 218;	break;
+			case 0x0C:	mtd->oobsize = 400;	break;
+			case 0x40:	mtd->oobsize = 436;	break;
+			case 0x44:	mtd->oobsize = 512;	break;
+			case 0x48:	mtd->oobsize = 640;	break;
+			case 0x00:	/* reserved */
+			case 0x4C:	/* reserved */
+			default:	mtd->oobsize = 0;	break;
+			}
+				/* Calc blocksize
+				 * NOTE: blocksize is indicated by bits 7, 5, and 4
+				 * of the 4th ID byte:
+				 *				000: 128K
+				 *				001: 256K
+				 *				010: 512K
+				 *				011: 1M
+				 * 100,101,110, 111: reserved
+				 * This code treats all the reserved values as though their
+				 * msb is 0.  Not exactly right, but what else to do?
+				 */
+			mtd->erasesize = (128 * 1024) << ((extid >> 4) & 0x03);
+				/* Get the required ecc strength */
+			switch (ecc_level) {
+			case 0:		// 1 bit / 512 bytes
+// TODO: FIXME: do we need to have a nand_sw_ecc_init(chip) routine
+//				to init all the function pointers and other fields of chip?
+				chip->ecc.mode = NAND_ECC_SOFT;
+				printk(KERN_INFO "NAND ecc: Software \n");
+				break;
+#if defined (CONFIG_MTD_NAND_ECC_HW)
+			case 1:		// 2 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 4);
+				break;
+			case 2:		// 4 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 4);
+				break;
+			default:
+				// TODO: FIXME: decide what to do for default case
+				// 8-bit ecc uses 13 ecc bytes per 512 bytes of data.
+				// If the spare area has at least 16 bytes per 512
+				// bytes of data, the ecc bytes will fit in the oob.
+			case 3:		// 8 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 8);
+				break;
+			case 4:		// 16 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 16);
+				break;
+			case 5:		// 24 bits / 1024 bytes
+				nand_hw_ecc_init_device(mtd, 24);
+				break;
+#else
+			default:
+				chip->ecc.mode = NAND_ECC_SOFT;
+				printk(KERN_INFO "NAND ecc: Software \n");
+				break;
+#endif
+			}
+		}
+		else {	/* Hynix */
+			/* Calc oobsize */
+			/* NOTE: oobsize is indicated by bits 6, 3, and 2
+			 * of the 4th ID byte:
+			 * (see the Hynix H27UAG8T2B datasheet, p20)
+			 * bits 7654.3210   HEX	  Description
+			 *		x0xx.00xx  0x00 : 128 bytes
+			 *		x0xx.01xx  0x04 : 224 bytes
+			 *		x0xx.10xx  0x08 : 448 bytes
+			 *		x0xx.11xx  0x0C : reserved
+			 *		x1xx.00xx  0x40 : reserved
+			 *		x1xx.01xx  0x44 : reserved
+			 *		x1xx.10xx  0x48 : reserved
+			 *		x1xx.11xx  0x4C : reserved
+			 *
+			 * clear the unused bits, leaving only 6, 3, and 2
+			 */
+			switch (extid & 0x4C) {
+			case 0x00:	mtd->oobsize = 128;	break;
+			case 0x04:	mtd->oobsize = 224;	break;
+			case 0x08:	mtd->oobsize = 448;	break;
+			case 0x0C:	mtd->oobsize = 64;	break;
+			case 0x40:	mtd->oobsize = 32;	break;
+			case 0x44:	mtd->oobsize = 16;	break;
+			case 0x48:	mtd->oobsize = 640;	break;
+			case 0x4C:	/* reserved */
+			default:	mtd->oobsize = 0;	break;
+			}
+				/* Calc blocksize */
+			/* Mask out all bits except 7, 5, and 4 */
+			switch (extid & 0xB0) {
+			case 0x00: mtd->erasesize =  128 * 1024; break;
+			case 0x10: mtd->erasesize =  256 * 1024; break;
+			case 0x20: mtd->erasesize =  512 * 1024; break;
+			case 0x30: mtd->erasesize =  768 * 1024; break;
+			case 0x80: mtd->erasesize = 1024 * 1024; break;
+			case 0x90: mtd->erasesize = 2048 * 1024; break;
+			case 0xA0: /* reserved */
+			case 0xB0: /* reserved */
+				   mtd->erasesize = 0;	break;
+			}
+				/* Get the required ecc strength */
+			switch (ecc_level) {
+			case 0:		// 1 bit / 512 bytes
+				chip->ecc.mode = NAND_ECC_SOFT;
+				printk(KERN_INFO "NAND ecc: Software \n");
+				break;
+#if defined (CONFIG_MTD_NAND_ECC_HW)
+			case 1:		// 2 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 4);
+				break;
+			case 2:		// 4 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 4);
+				break;
+			case 3:		// 8 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 8);
+				break;
+			case 4:		// 16 bits / 512 bytes
+				nand_hw_ecc_init_device(mtd, 16);
+				break;
+			case 5:		// 24 bits / 2048 bytes
+			case 6:		// 24 bits / 1024 bytes
+			default:	/* reserved; default to 24 bits / 1KB */
+				nand_hw_ecc_init_device(mtd, 24);
+				printk(KERN_INFO "NAND ecc: 24-bit HW\n");
+				break;
+#else
+			default:
+				chip->ecc.mode = NAND_ECC_SOFT;
+				printk(KERN_INFO "NAND ecc: Software \n");
+				break;
+#endif
+			}
+		}
+		busw = 0;
+	}
+	// NOTE: If we need to deal with other types of non-traditional NANDs,
+	// we can insert code here to check for them and to deal with them.
+
+	else {	/* Sometimes we read invalid ID bytes; usually the first one
+		 * is not a recognized manufacturer code.  Do the processing
+		 * that's in nand_get_flash_type() only if the first ID byte
+		 * is a recognzied mfr code.  This might be wrong sometimes,
+		 * but is will catch many of the errors.
+		 */
+		switch (id_data[0]) {
+		case NAND_MFR_TOSHIBA:
+		case NAND_MFR_SAMSUNG:
+		case NAND_MFR_FUJITSU:
+		case NAND_MFR_NATIONAL:
+		case NAND_MFR_RENESAS:
+		case NAND_MFR_STMICRO:
+		case NAND_MFR_HYNIX:
+		case NAND_MFR_MICRON:
+		case NAND_MFR_AMD:
+			/* This processing is identical to code in
+			 * nand_get_flash_type().
+			 * First calc pagesize */
+			mtd->writesize = 1024 << (extid & 0x03);
+			extid >>= 2;
+				/* Calc oobsize */
+			mtd->oobsize = (8 << (extid & 0x01)) * (mtd->writesize >> 9);
+			extid >>= 2;
+				/* Calc blocksize (multiples of 64KiB) */
+			mtd->erasesize = (64 * 1024) << (extid & 0x03);
+			extid >>= 2;
+				/* Get buswidth information */
+			busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
+			break;
+		default:	/* Force an error for unexpected type of NAND */
+			printk(KERN_INFO "Non-Samsung, non-Hynix, non-ONFI unit\n");
+			busw = -1; /* indicate an error */
+			break;
+		}
+	}
+	return busw;
+}
+
+static const char *part_probes[] = { "cmdlinepart", NULL };
+static struct mtd_partition partition_info_cart[] = {
+	{ .name		= "Cartridge",
+	  .offset	= 0,
+ 	  .size		= MTDPART_SIZ_FULL },
+};
+
+static ssize_t get_cart_hotswap_state(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev__ = to_platform_device(dev);
+	struct nxp_nand *nxp = platform_get_drvdata(pdev__);
+
+	return sprintf (buf, "%d\t%d\n", nxp->cart_ready, nxp->cart_ubi);
+}
+
+static ssize_t set_cart_hotswap_state(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	struct resource *res;
+	int cart_parts_nb = 0;
+	int hotswap_state;
+	struct platform_device *pdev__ ;
+	struct mtd_partition *cart_parts = NULL;
+	struct nand_chip * chip;
+	struct mtd_info  * mtd;
+	size_t nread;
+	uint32_t magic;
+	ssize_t ret = count;
+	int scan;
+	int i = 0;
+	struct nxp_nand_plat_data *pdata;
+	struct nxp_nand  *nxp;
+
+	printk(KERN_INFO "Entered %s\n", __func__);
+
+	if(sscanf(buf, "%d", &hotswap_state) != 1)
+		return -EINVAL;
+	else printk(KERN_INFO "%s: %d\n", __func__, hotswap_state);
+
+	pdev__= to_platform_device(dev);
+	res = platform_get_resource(pdev__, IORESOURCE_MEM, 0);
+	if(!res) {
+		dev_err(dev, "nand: cart_hotswap() failed to get resource!\n");
+		return -ENXIO;
+	}
+
+	nxp = platform_get_drvdata(pdev__);
+	if (down_interruptible(&nxp->sem_hotswap))
+		return -ERESTARTSYS;
+
+	gpio_request(CARTRIDGE_DETECT,"Cartridge Detect");
+	gpio_request(NAND_CHIP_SELECT,"Nand Chip Select");
+
+	if ((0 != hotswap_state) && (1 != hotswap_state))
+	{
+		gpio_set_function(CARTRIDGE_DETECT, 1);
+			// configure CARTRIDGE_DETECT as GPIO
+		gpio_direction_input(CARTRIDGE_DETECT); // and an input
+		if (gpio_get_value(CARTRIDGE_DETECT) != NAND_CART_DETECT_LEVEL)
+		{
+			hotswap_state = 0;
+		}
+		else
+		{
+			hotswap_state = 1;
+		}
+	}
+
+	if(0 == hotswap_state) {	// cart is removed
+		nxp->cart_ready = 0;
+		nxp->eccmode = 0;
+		nand_release(&nxp->mtd);
+		dev_info(dev, "cartridge removed !\n");
+	}
+	else
+	{  // cart is inserted
+
+		// check if a cartridge is inserted
+		gpio_set_function(NAND_CHIP_SELECT, 1);
+			// configure NAND_CHIP_SELECT as AltFn1
+		gpio_set_function(CARTRIDGE_DETECT, 1);
+			// configure CARTRIDGE_DETECT as GPIO
+		gpio_direction_input(CARTRIDGE_DETECT); // and an input
+		if (gpio_get_value(CARTRIDGE_DETECT) != NAND_CART_DETECT_LEVEL)
+		{
+			dev_err(dev, "cartridge insertion can't be confirmed by driver\n");
+			ret = -EAGAIN;
+			goto out;
+		}
+		dev_info(dev, "cartridge inserted\n");
+
+		if(nxp->cart_ready == 1){
+			dev_notice(dev, "cartridge driver was ready\n");
+			goto out;
+		}
+		mtd = &nxp->mtd;
+		chip = &nxp->chip;
+		memset(mtd, 0, sizeof(struct mtd_info));
+		memset(chip, 0, sizeof(struct nand_chip));
+		mtd->priv = chip;
+		mtd->name = DEV_NAME_NAND;
+		mtd->owner = THIS_MODULE;
+		chip->IO_ADDR_R 	= (void __iomem *)__PB_IO_MAP_NAND_VIRT;
+		chip->IO_ADDR_W 	= (void __iomem *)__PB_IO_MAP_NAND_VIRT;
+		chip->cmd_ctrl 		= nand_cmd_ctrl;
+		chip->dev_ready 	= nand_dev_ready;
+		chip->select_chip 	= nand_select_chip;
+		chip->init_size		= lf2000_nand_init_size;
+		chip->chip_delay 	= 15;
+		chip->ecc.mode  = NAND_ECC_SOFT;
+
+		// After unsuccessful scan, delay for an increasing period
+		// and then try again
+		do {
+			scan = nand_scan(mtd, 1);
+			if (0 == scan)
+				break;
+			if (-EPERM == scan) {
+				break;	//permanent error, don't retry
+			}
+
+			udelay(10000 << i);	// 10 msec, 20 msec, 40 msec
+			printk(KERN_INFO "Delayed %d microsec before again"
+					 " calling nand_scan\n",
+				10000 << i);
+		} while (++i < 4);
+
+		if (i > 1)
+			dev_info(dev, "tried to scan cartridge %d times\n",i);
+
+		if (scan) {
+			nxp->cart_ready = -1;
+			dev_err(dev, "cartridge inserted, but NAND not detected !\n");
+			nand_release(mtd);
+			ret = -EPERM;
+			goto out;
+		}
+		printk(KERN_INFO "cart chip options: 0x%08x\n", chip->options);
+
+		if (nand_ecc_layout_check(mtd)){
+			nxp->cart_ready = -1;
+			dev_err(dev, "nand_ecc_layout_check() found error!\n");
+			nand_release(mtd);
+			ret = -ENXIO;
+			goto out;
+		}
+
+		pdata = dev_get_platdata(&pdev__->dev);
+		pdata->nr_parts  = parse_mtd_partitions(mtd, part_probes, &pdata->parts, NULL);
+		if (pdata->nr_parts == 0) {
+			pdata->parts    = partition_info_cart;
+			pdata->nr_parts = ARRAY_SIZE(partition_info_cart);
+		}
+			/* Register the cartridge partitions, if it exists */
+		ret = mtd_device_parse_register(mtd, NULL, 0, pdata->parts, pdata->nr_parts);
+		if (ret) {
+			nand_release(mtd);
+			goto out;
+		}
+
+		mtd->_read(mtd, 0, sizeof(uint32_t), &nread, (void *)&magic);
+
+		magic = be32_to_cpu(magic);
+		if (magic == UBI_EC_HDR_MAGIC) {
+			nxp->cart_ubi=1;
+			dev_info(dev, "cartridge has UBI layer, nread=%d\n", nread);
+		}
+		else {
+			nxp->cart_ubi=0;
+			dev_info(dev,"cartridge has no UBI, nread=%d\n", nread);
+		}
+		nxp->cart_ready = 1;
+		dev_info(dev, "cart driver ready !\n");
+	}
+out:
+	up(&nxp->sem_hotswap);
+	return ret;
+}
+static DEVICE_ATTR(cart_hotswap,
+		   S_IRUSR|S_IRGRP|S_IROTH|S_IWUSR|S_IWGRP|S_IWOTH,
+		   get_cart_hotswap_state, set_cart_hotswap_state);
+static struct attribute *nand_attributes[] = {
+	&dev_attr_cart_hotswap.attr,
+	NULL
+};
+
+static struct attribute_group nand_attr_group = {
+	.attrs = nand_attributes
+};
+
 static int nand_probe(struct platform_device *pdev)
 {
 	struct nxp_nand_plat_data *pdata = dev_get_platdata(&pdev->dev);
@@ -623,6 +1099,7 @@ static int nand_probe(struct platform_device *pdev)
 	nxp->pdev = pdev;
 
 	platform_set_drvdata(pdev, nxp);
+	sema_init(&nxp->sem_hotswap, 1);
 	mtd = &nxp->mtd;
 	chip = &nxp->chip;
 	mtd->priv = chip;
@@ -638,6 +1115,7 @@ static int nand_probe(struct platform_device *pdev)
 	chip->dev_ready 	= nand_dev_ready;
 	chip->select_chip 	= nand_select_chip;
 	chip->chip_delay 	= chip_delay;
+	chip->init_size		= lf2000_nand_init_size;
 //	chip->read_buf 		= nand_read_buf;
 //	chip->write_buf 	= nand_write_buf;
 #if defined (CONFIG_MTD_NAND_ECC_BCH)
@@ -645,7 +1123,7 @@ static int nand_probe(struct platform_device *pdev)
 #endif
 
 #if defined (CONFIG_MTD_NAND_ECC_HW)
-	ret = nand_hw_ecc_init_device(mtd);
+	ret = nand_hw_ecc_init_device(mtd, ECC_HW_BITS);
 	printk(KERN_INFO "NAND ecc: Hardware (delay %d)\n", chip_delay);
 #elif defined (CONFIG_MTD_NAND_ECC_BCH)
 	chip->ecc.mode 	 = NAND_ECC_SOFT_BCH;
@@ -660,7 +1138,7 @@ static int nand_probe(struct platform_device *pdev)
 	case 40: chip->ecc.bytes =  70; chip->ecc.size  = 1024; break;
 //	case 60: chip->ecc.bytes = 105; chip->ecc.size  = 1024; break;	/* not test */
 	default:
-		printk("Fail: not supoort bch ecc %d mode !!!\n", ECC_BCH_BITS);
+		printk(KERN_ERR "Fail: not supoort bch ecc %d mode !!!\n", ECC_BCH_BITS);
 		ret = -1;
 		goto err_something;
 	}
@@ -673,12 +1151,15 @@ static int nand_probe(struct platform_device *pdev)
 	printk(KERN_NOTICE "Scanning NAND device ...\n");
 	if (nand_scan(mtd, maxchips)) {
 		ret = -ENXIO;
-		goto err_something;
+		goto nocart;
 	}
 
 	if (nand_ecc_layout_check(mtd)){
-		ret = -ENXIO;
-		goto err_something;
+		nxp->cart_ready = -1;
+		dev_err(&pdev->dev, "cartridge inserted, but NAND not detected !\n");
+		nand_release(mtd);
+		ret = -EPERM;
+		goto nocart;
 	}
 
 #ifdef CFG_NAND_ECCIRQ_MODE
@@ -693,6 +1174,11 @@ static int nand_probe(struct platform_device *pdev)
 #endif
 
 	/* set command partition */
+	pdata->nr_parts  = parse_mtd_partitions(mtd, part_probes, &pdata->parts, NULL);
+	if (pdata->nr_parts == 0) {
+		pdata->parts    = partition_info_cart;
+		pdata->nr_parts = ARRAY_SIZE(partition_info_cart);
+	}
 	ret = mtd_device_parse_register(mtd, NULL, 0, pdata->parts, pdata->nr_parts);
 	if (ret) {
 		nand_release(mtd);
@@ -700,6 +1186,7 @@ static int nand_probe(struct platform_device *pdev)
 	} else {
 //		platform_set_drvdata(pdev, chip);
 	}
+	nxp->cart_ready = 1;
 
 #ifdef CONFIG_NAND_RANDOMIZER
 	nxp->pages_per_block_mask = (mtd->erasesize/mtd->writesize) - 1;
@@ -719,6 +1206,9 @@ static int nand_probe(struct platform_device *pdev)
 	}
 #endif
 
+nocart:
+	nxp->eccmode = 0;
+	sysfs_create_group(&pdev->dev.kobj, &nand_attr_group);
 	nexell_nand_timing_set(mtd);
 
 	printk(KERN_NOTICE "%s: Nand partition \n", ret?"FAIL":"DONE");
@@ -738,37 +1228,12 @@ err_kzalloc:
 	return ret;
 }
 
-static int nand_remove(struct platform_device *pdev)
-{
-	struct nxp_nand  *nxp  = platform_get_drvdata(pdev);
-	struct mtd_info  *mtd  = &nxp->mtd;
-	int ret = 0;
-
-	nand_release(mtd);
-	if (nxp->irq)
-		free_irq(nxp->irq, nxp);
-#ifdef CONFIG_NAND_RANDOMIZER
-	if (nxp->randomize_buf)
-		kfree (nxp->randomize_buf);
-#endif
-#ifdef CONFIG_MTD_NAND_VERIFY_WRITE
-	if (nxp->verify_page)
-		kfree (nxp->verify_page);
-#endif
-#if defined (CONFIG_MTD_NAND_ECC_HW)
-	ret = nand_hw_ecc_fini_device(mtd);
-#endif
-	kfree(nxp);
-
-	return 0;
-}
-
 static struct platform_driver nand_driver = {
 	.probe		= nand_probe,
 	.remove		= nand_remove,
 	.resume		= nand_resume,
 	.driver		= {
-	.name		= DEV_NAME_NAND,
+	.name		= DEV_NAME_LF_NAND,
 	.owner		= THIS_MODULE,
 	},
 };

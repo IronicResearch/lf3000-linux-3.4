@@ -62,7 +62,7 @@
 #include <linux/wakelock.h>
 #include <mach/soc.h>
 #include <cfg_type.h>
-#include <mach/ektf2k.h>
+#include <plat/ektf2k.h>
 // #include "ektf2k.h" // also used by device.c
 
 #ifdef ELAN_TEN_FINGERS

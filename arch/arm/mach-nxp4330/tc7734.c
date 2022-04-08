@@ -23,6 +23,9 @@
 #include <mach/platform_id.h>
 #include <mach/tc7734.h>
 
+/* LF3000 USB sometimes misses VBUS disconnect, remind that driver */
+void dwc_otg_pcd_update_disconnected_state_tc7734(void);
+
 #define ST_VBATN_COUNT 120
 
 static struct tc7734_chip *local_chip = NULL;
@@ -37,9 +40,9 @@ static int tc7734_write_reg_raw(unsigned int reg, unsigned int value)
 	u8 buf[2];
 
 	/* write new register value */
-	if (is_board_lucy())
-		i2c = i2c_get_adapter(TC7734_I2C_ADAPTER_1);
-	else
+//	if (is_board_lucy())
+//		i2c = i2c_get_adapter(TC7734_I2C_ADAPTER_1);
+//	else
 		i2c = i2c_get_adapter(TC7734_I2C_ADAPTER_0);
 
 	if (!i2c) {
@@ -82,12 +85,12 @@ static int tc7734_read_reg_raw(unsigned int reg)
 	u8 buf[2];
 	int ret;
 
-	if (is_board_lucy()) {
+//	if (is_board_lucy()) {
 		i2c = i2c_get_adapter(TC7734_I2C_ADAPTER_0);
-	}
-	else {
-		i2c = i2c_get_adapter(0);
-	}
+//	}
+//	else {
+//		i2c = i2c_get_adapter(0);
+//	}
 	if (!i2c) {
 		printk(KERN_ERR "%s.%d return -EIO\n",
 				__FUNCTION__, __LINE__);
@@ -263,6 +266,22 @@ static int tc7734_write_bits(unsigned int reg, unsigned int mask, int value)
 
 	return ret;
 }
+static int tc7734_write_bits_raw(unsigned int reg, unsigned int mask, int value)
+{
+	int temp_val, ret;
+
+	temp_val = tc7734_read_reg_raw(reg);
+
+	if (temp_val < 0)
+		return temp_val;
+
+	temp_val &= ~mask;
+	temp_val |= value;
+
+	ret = tc7734_write_reg_raw(reg, temp_val);
+
+	return ret;
+}
 
 static ssize_t show_vbus_draw(struct device *dev, struct device_attribute *attr,
 			char *buf)
@@ -427,14 +446,6 @@ static ssize_t show_power_source(struct device *dev,
                 /* Charger detected */
                 charge_source = (reg & TC7734_STAT1_STYP_MASK) >> 1;
 
-#if 0
-	/* use cache directly - interrupt should update cache */
-	if (local_chip->reg_cache[TC7734_STAT1] & TC7734_STAT1_USBAC) {
-		/* Charger detected */
-		charge_source = (local_chip->reg_cache[TC7734_STAT1] &
-			TC7734_STAT1_STYP_MASK) >> 1;
-#endif
-
 		switch (charge_source) {
 			case 0:
 				ret = sprintf(buf, "Charger-Undefined\n");
@@ -450,13 +461,8 @@ static ssize_t show_power_source(struct device *dev,
 				break;
 		}
 	} else {
-		/* charger not detected */
-		if (tc7734_is_battery())
-			ret = sprintf(buf, "Battery\n");
-		else
-			ret = sprintf(buf, "Battery-Undefined\n");
+			ret = sprintf(buf, "Battery\n"); //battery is the power source if there is no USB connected
 	}
-
 	return ret;
 }
 
@@ -496,12 +502,11 @@ static void tc7734_monitor_task(struct work_struct *work)
 	u8 *cache = local_chip->reg_cache;
 	int pb_changed = 0;
 	unsigned long flags;
-	int int_reg;
-	int reg;
-
+	u8 int_reg=0;
+	u8 reg;
+	u8 charger_timeout_status,stat1=0,stat3=0;
 	/* clears GPIO interrupt condition (unsafe in IRQ handler) */
 	//disable_irq(gpio_to_irq(TC7734_INT));
-
 
 	/* serialize access to chip*/
 	spin_lock_irqsave(&local_chip->lock, flags);
@@ -519,85 +524,87 @@ static void tc7734_monitor_task(struct work_struct *work)
 	int_reg = tc7734_read_reg_raw(TC7734_INT_STAT);
 	if (0 <= int_reg)
 		cache[TC7734_INT_STAT] = int_reg;
-
-	if (int_reg & TC7734_INT_CHGER) {
-		reg = tc7734_read_reg_raw(TC7734_STAT2);
+	printk(KERN_INFO "INT: 0x%x\n",int_reg);
+	if (int_reg & TC7734_INT_PB)   /* If PB state changed*/
+				pb_changed = 1;
+	else{
+		msleep(75);   //75 passed, 50 failed.
+		stat1 = tc7734_read_reg_raw(TC7734_STAT1);
 		if (reg < 0)
 			return;
-
-		cache[TC7734_STAT2] = reg;
-
-		if (reg & 0x7F) {
-			/* TODO: What to do if error? */
-			/*printk(KERN_ERR "%s: Charger error: %d\n", __func__,
-			  reg);*/
-			//TAEC
-			if( reg & 0x40) {
-				local_chip->dcin_cnt++;
-			}
-			if( reg & 0x07) {
-				/* TODO: What to do if error? */
-				printk(KERN_ERR "%s: High/Low Temperature Charger error: 0x%x\n", __func__,
-					reg);
-		}
-			if(local_chip->dcin_cnt > ST_VBATN_COUNT) {
-				printk(KERN_ERR "%s: Charger error: 0x%x dcin_cnt %d\n", __func__,
-						reg,local_chip->dcin_cnt);
+		printk(KERN_INFO "STAT1 register: 0x%x\n", stat1);
+		if (int_reg & TC7734_INT_USBAC) {  /* if USB status changed*/
+			printk(KERN_NOTICE "\nUSBAC\n");
+			/* charger connected */
+			reg = tc7734_read_reg_raw(TC7734_STATE2);
+			if (reg < 0)
+				return;
+			if (reg & TC7734_STATE2_CHG) {
+				local_chip->charger_status = true;
+				local_chip->charging_complete = false;
 			}
 		}
+		if ((int_reg & TC7734_INT_CHGER)&&(stat1&TC7734_STAT1_USBAC)) {
+			/*dont act on charger error if usb is not connected*/
 
-		if (reg & 0x80) {
-			/* discharge started... charging stopped? */
-			local_chip->charger_status = false;
+			printk(KERN_INFO "CHGER\n");
+			stat3 = tc7734_read_reg_raw(TC7734_STAT3);
+			if (reg < 0)
+				return;
+			printk(KERN_INFO "STAT3 register: 0x%x\n", stat3);
+
+			charger_timeout_status=stat3 & TC7734_STAT3_TOUT_MASK;
+			if(!(stat3 & TC7734_STAT3_CGED1)) { //if charge is not complete
+				if(charger_timeout_status==TC7734_STAT3_CHG_WAITING){  //charging did not start
+
+					 //disable charger interrupt to avoid further interrupts
+					tc7734_write_reg_raw(TC7734_INTMASK, ~(TC7734_INT_CHGCMP |
+									TC7734_INT_PB |
+									TC7734_INT_USBAC));   //enable charger interrupt in case it was disabled before
+					tc7734_write_bits_raw(TC7734_STATE2,TC7734_STATE2_CHG_EN,0); //disable charger
+					//gpio_set_value(CHG_FLT,1);  /*turn Red LED ON*/
+					gpio_set_value(CHG_GRN_DISABLE,1);/*turn green LED off*/
+				}
+				else if((charger_timeout_status==TC7734_STAT3_PRECHG_TOUT)   //precharge timeout
+					||(charger_timeout_status==TC7734_STAT3_CHG_TOUT)){      //charging timeout
+
+					if((stat3&TC7734_STAT3_CGMD_MASK)==0){  //charging mode=no charge
+							//disable charger interrupt to avoid further interrupts
+						tc7734_write_reg_raw(TC7734_INTMASK, ~(TC7734_INT_CHGCMP |
+										TC7734_INT_PB |
+										TC7734_INT_USBAC));   //enable charger interrupt in case it was disabled before
+						tc7734_write_bits_raw(TC7734_STATE2,TC7734_STATE2_CHG_EN,0); //disable charger
+						gpio_set_value(CHG_FLT,1);  /*turn Red LED ON*/
+						gpio_set_value(CHG_GRN_DISABLE,1);/*turn green LED off*/
+					}
+				}
+			}
+		}
+
+		if(!(stat1&TC7734_STAT1_USBAC)){ //if USB is disconnected
+			printk(KERN_INFO "USB DISCONNECT \n");
+			gpio_set_value(CHG_FLT,0);  		/* let PMIC control charge status red LED */
+			gpio_set_value(CHG_GRN_DISABLE,0);  /* let PMIC control charge status Green LED */
+			tc7734_write_reg_raw(TC7734_INTMASK, ~(TC7734_INT_CHGER |
+				TC7734_INT_CHGCMP |
+				TC7734_INT_PB |
+				TC7734_INT_USBAC));   //enable charger interrupt in case it was disabled before
+			tc7734_write_bits_raw(TC7734_STATE2,TC7734_STATE2_CHG_EN,TC7734_STATE2_CHG_EN); //enable charger
+			dwc_otg_pcd_update_disconnected_state_tc7734();
 		}
 	}
-	
-	if (int_reg & TC7734_INT_CHGCMP) {
-		local_chip->charging_complete = true;
-		printk(KERN_ALERT "%s: Battery Charging has completed \n",
-				__func__);
-	}
-
-	if (int_reg & TC7734_INT_USBAC) {
-
-		local_chip->dcin_cnt = 0;
-
-		/* charger connected */
-		reg = tc7734_read_reg_raw(TC7734_STATE2);
-		if (reg < 0)
-			return;
-		if (reg & TC7734_STATE2_CHG) {
-			local_chip->charger_status = true;
-			local_chip->charging_complete = false;
-		}
-		/* Update cache */
-		reg = tc7734_read_reg_raw(TC7734_STAT1);
-		if (0 <= reg) {
-			local_chip->reg_cache[TC7734_STAT1] = reg;
-		}
-
-
-	}
-
-	/* If PB state changed*/
-	if (int_reg & TC7734_INT_PB)
-		pb_changed = 1;
-	
 	/* Service register changes that have been delayed */
 	if (local_chip->have_new_vbus_draw) {
 		local_chip->have_new_vbus_draw = false;
 		/* TODO - if applicable*/
 	}
-	
 	/* release TC7734 */
 	spin_lock_irqsave(&local_chip->lock, flags);
 	local_chip->busy = 0;
 	spin_unlock_irqrestore(&local_chip->lock, flags);
 	wake_up_interruptible(&local_chip->wait);
-
 	if (pb_changed && local_chip->power_button_callback)
 		local_chip->power_button_callback();
-
 	return;
 }
 
@@ -611,34 +618,53 @@ static irqreturn_t tc7734_chip_irq(int irq, void *priv)
 	 * 	Interrupt only stays for 5ms
 	 * 	Do we need to check for pin level?
 	 */
-	if (gpio_get_value(TC7734_INT) == 0) {
+//	if (gpio_get_value(TC7734_INT) == 0) {
 		/* schedule task, defer clearing interrupt condition */
 		queue_work(chip->tc7734_tasks, &chip->tc7734_work);
 		return IRQ_HANDLED;
-	}
-	return IRQ_NONE;
+//	}
+//	return IRQ_NONE;
 }
 
-int tc7734_is_battery(void)
-{
-	int ret = 0;
-
-	ret = ((tc7734_read_reg(TC7734_STATE2) & TC7734_STATE2_CHG_MASK) ==
-		TC7734_STATE2_DISCHG) ? 1 : 0;
-	return ret;
-}
-EXPORT_SYMBOL(tc7734_is_battery);
 
 int tc7734_is_usb_present(void)
 {
 	int ret = 0;
 
-	ret = ((local_chip->reg_cache[TC7734_STAT1] & TC7734_STAT1_USBAC) ==
-		TC7734_STAT1_USBAC)? 1 : 0;
-
+	ret = ((tc7734_read_reg(TC7734_STAT1)& TC7734_STAT1_USBAC) ==
+				TC7734_STAT1_USBAC)? 1 : 0;
 	return ret;		
 }
 EXPORT_SYMBOL(tc7734_is_usb_present);
+
+
+/* This routine is designed to return 1 if the device is taking no power from battery
+ * routine will return 0 if the device is running completely or partially running on battery
+ * Since Bogota consumes more than 500mA in active mode, it drains battery even when connected to SDP
+ * Bogota runs completely on USB power only when connected to CDP or DCP
+ */
+#define USB_NONSTANDARD		0
+#define USB_SDP				1
+#define USB_CDP				2
+#define USB_DCP				3
+
+int tc7734_is_usb_powered()
+{
+	int ret = 0;
+	int charge_source;
+	u8 tc7734_stat1_reg ;
+
+	tc7734_stat1_reg = tc7734_read_reg(TC7734_STAT1);
+	if (tc7734_stat1_reg & TC7734_STAT1_USBAC) {
+		charge_source = (tc7734_stat1_reg & TC7734_STAT1_STYP_MASK) >> 1;
+		if((charge_source==USB_CDP)||(charge_source==USB_DCP))
+			return 1;  //device is not taking any power from battery
+		else
+			return 0;  //device is getting partially powered by battery
+	}
+	else
+		return 0;  //no USB source so this should be battery
+}
 
 int tc7734_is_charging_active(void)
 {
@@ -676,12 +702,22 @@ void tc7734_set_power_standby(void)
 	/* go to standby mode */
 	tc7734_write_reg(TC7734_STATE1, TC7734_STATE_SW_STANDBY);
 }
-EXPORT_SYMBOL(tc7734_set_power_standby);
+//EXPORT_SYMBOL(tc7734_set_power_standby);
+// not exporting so that it's not used by mistake. Always go through tc7734_set_power_off routine
 
+/*FWBOG-299-PMIC should be OFF if USB NOT connected*/
 void tc7734_set_power_off(void)
 {
-	/*go to off mode */
-	tc7734_write_reg(TC7734_STATE1, TC7734_STATE_OFF);
+	if(tc7734_is_usb_present()){
+		printk(KERN_ALERT "PMIC Standby.\n");
+		/*PMIC in standby mode to continue charging */
+		tc7734_set_power_standby();
+	}else{
+		printk(KERN_ALERT "PMIC OFF\n");
+		/*PMIC in OFF mode to reduce sleep current and increase battery life on shelf */
+		tc7734_write_reg(TC7734_STATE1, TC7734_STATE_OFF);
+	}
+
 }
 EXPORT_SYMBOL(tc7734_set_power_off);
 
@@ -758,6 +794,47 @@ int tc7734_set_charger_current(unsigned int mA)
 }
 
 EXPORT_SYMBOL(tc7734_set_charger_current);
+
+enum charging_currents tc7734_get_default_charger_current(void)
+{
+	enum charging_currents value;
+    int charge_source;
+	int reg;
+	
+	if(!(tc7734_read_reg(TC7734_STATE2) & TC7734_STATE2_CHG_EN)) //Charging is disabled
+	{
+		value = NO_CHARGING_CURRENT;
+		return value;
+	}
+	
+	reg = tc7734_read_reg(TC7734_STAT1);
+	if (reg & TC7734_STAT1_USBAC) {
+		/* Charger detected */
+		charge_source = (reg & TC7734_STAT1_STYP_MASK) >> 1;
+		switch (charge_source) {
+			case 1:
+				value = SDP_CHARGING_CURRENT; //SDP
+				break;
+			case 2:
+				value = CDP_CHARGING_CURRENT; //CDP
+				break;
+			case 3:
+				value = DCP_CHARGING_CURRENT; //DCP
+				break;
+			default: 
+				value = 0;
+				break;
+		}
+	} 
+	else {
+		/* charger not detected */
+		value = BATTERY_NO_CURRENT; // On battery
+	}
+	
+	return value;
+}
+
+EXPORT_SYMBOL(tc7734_get_default_charger_current); 
 
 int tc7734_have_tc7734(void)
 {
@@ -909,7 +986,7 @@ static int tc7734_chip_probe(struct platform_device *pdev)
 	tc7734_write_reg(TC7734_INTMASK, ~(TC7734_INT_CHGER |
 			TC7734_INT_CHGCMP |
 			TC7734_INT_PB |
-			TC7734_INT_USBAC));	
+			TC7734_INT_USBAC));
 
 	/* Enable Charger */
 	tc7734_write_reg(TC7734_STATE2, TC7734_STATE2_DCP_EN |
@@ -921,6 +998,7 @@ static int tc7734_chip_probe(struct platform_device *pdev)
 	tc7734_read_reg(TC7734_INT_STAT);
 
 	/* Register dump */		
+#if DEBUG_I2C
 	for (i = 0; i <= priv->maximum_register; i++) {
 		ret = tc7734_read_reg_raw(i);
 		if (0 <= ret) {
@@ -929,6 +1007,7 @@ static int tc7734_chip_probe(struct platform_device *pdev)
 			printk(KERN_INFO "%s: reg 0x%02X: error ret=%d\n", __FUNCTION__, i, ret);
 		}
 	}
+#endif
 
 	/* setup IRQ */
 	enable_irq(gpio_to_irq(TC7734_INT));

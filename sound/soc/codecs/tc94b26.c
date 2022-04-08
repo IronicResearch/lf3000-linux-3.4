@@ -23,12 +23,179 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <sound/pcm_params.h>
+#include <linux/gpio.h>
+#include <linux/irq.h>
+#include <linux/lf3000/gpio.h>
 #include <sound/tc94b26.h>
 #include "tc94b26.h"
 
 
-#define TIMEOUT		msecs_to_jiffies(50)
+//#define TIMEOUT		msecs_to_jiffies(50)  //50 creates 5 jiffies and that is not enough
+#define TIMEOUT		msecs_to_jiffies(100000)  /*FIXME this number might be too big, fine tune later*/
+
 #define CODEC_NAME "tc94b26-codec"
+
+static struct tc94b26_private *local_tc94b26_chip = NULL;
+
+
+/*
+ * local i2c read reg routine
+ */
+static int tc94b26_read_reg_raw(unsigned int reg)
+{
+	struct i2c_adapter* i2c;
+	struct i2c_msg i2c_messages[2];
+	u8 buf[2];
+	int ret;
+
+	i2c = i2c_get_adapter(TC94B26_I2C_ADAPTER_0);
+
+	if (!i2c) {
+		printk(KERN_ERR "%s.%d return -EIO\n",
+				__FUNCTION__, __LINE__);
+
+		return -1;
+	}
+
+	buf[0] = 0xFF & reg;           /* read this register */
+	buf[1] = 0;
+
+	/* write portion */
+	i2c_messages[0].addr = TC94B26_ADDR;
+	i2c_messages[0].buf = buf;
+	i2c_messages[0].len = 1;
+	i2c_messages[0].flags = 0;      /* write */
+
+	/* read portion */
+	i2c_messages[1].addr = TC94B26_ADDR;
+	i2c_messages[1].buf = buf;
+	i2c_messages[1].len = 1; //2;
+	i2c_messages[1].flags = I2C_M_RD;
+
+	ret = i2c_transfer(i2c, i2c_messages, 2);
+	i2c_put_adapter(i2c);
+	if (ret < 0) {
+		printk(KERN_ERR "%s.%d reg=%d, i2c_transfer=%d\n",
+			__FUNCTION__, __LINE__, reg, ret);
+		return -EIO;
+	}
+
+#if DEBUG_I2C
+	printk(KERN_INFO "%s: reg=0x%02x: data=0x%02x\n", __FUNCTION__, reg, buf[0]);
+#endif
+
+	return 0xFF & buf[0]; //[1];
+}
+
+/*
+ * local TC94B26 write reg routine, no range checking
+ */
+static int tc94b26_write_reg_raw(unsigned int reg, unsigned int value)
+{
+	struct i2c_adapter* i2c;
+	struct i2c_msg i2c_messages[2];
+	u8 buf[2];
+
+	/* write new register value */
+	i2c = i2c_get_adapter(TC94B26_I2C_ADAPTER_0);
+
+	if (!i2c) {
+		printk(KERN_ERR "%s.%d return -EIO\n",
+			__FUNCTION__, __LINE__);
+		return -EIO;
+	}
+
+	buf[0] = 0xff & reg;
+	buf[1] = 0xFF & value;
+
+	/* write portion */
+	i2c_messages[0].addr = TC94B26_ADDR;
+	i2c_messages[0].buf = buf;
+	i2c_messages[0].len = 2;
+	i2c_messages[0].flags = 0;	/* write */
+
+	if (i2c_transfer(i2c, i2c_messages, 1) < 0) {
+		i2c_put_adapter(i2c);
+		printk(KERN_ERR "%s.%d return -EIO\n",
+			__FUNCTION__, __LINE__);
+		return -EIO;
+	}
+
+#if DEBUG_I2C
+	printk(KERN_INFO "%s: 0x%02x: 0x%02x\n", __FUNCTION__, buf[0], buf[1]);
+#endif
+
+	i2c_put_adapter(i2c);
+	return 0;
+}
+#define ZERO_DB	0x41  //register value for zero gain
+
+/* On Bogota, digital gain for speaker and headphone are not the same.
+ * digital gain for speaker is higher than the headphone.
+ * The difference depends on locale. There is also a fixed
+ * 3dB component that was introduced to avoid the distortion
+ * on headphone. The difference in gain is stored in
+ * local_tc94b26_chip->hp_gain_offset_dB. Current gain level
+ * received from lfd is stored in local_tc94b26_chip->spkr_gain.
+ * This routine calculates the gain value based on spkr gain and offset.
+ * @output : new value for the register DVOLC*/
+u8 convert_gain_level_for_hp(void)
+{
+	int db,new_db;
+	u8 new_val;
+	if(local_tc94b26_chip->spkr_gain>=ZERO_DB)
+		db=(local_tc94b26_chip->spkr_gain-ZERO_DB)/2; //1 count=1/2 dB for gains>0dB
+	else
+		db=(ZERO_DB-local_tc94b26_chip->spkr_gain)*(-1); //1 count=1 dB for gains< 0dB
+
+	/*if headphones are plugged in,we are switching to headphone so we need to reduce gain  */
+	new_db=db-local_tc94b26_chip->hp_gain_offset_dB;
+	if(new_db>=0)
+		new_val=(new_db*2)+ZERO_DB;
+	else
+		new_val=new_db+ZERO_DB;
+	return new_val;
+}
+//FWBOG-941
+#define US_CA_OFFSET 		3 //headphone gain offset for US and canada
+#define NON_US_CA_OFFSET 	9 //headphone gain offset for all other locales
+
+int tc94b26_set_locale(const char *locale)
+{
+	strncpy(local_tc94b26_chip->locale, locale, sizeof(local_tc94b26_chip->locale));
+	if ((!strncasecmp(local_tc94b26_chip->locale, "en-us",5))
+	 || (!strncasecmp(local_tc94b26_chip->locale, "en-ca",5))) {
+
+		local_tc94b26_chip->hp_gain_offset_dB = US_CA_OFFSET;
+	}
+	else
+		local_tc94b26_chip->hp_gain_offset_dB = NON_US_CA_OFFSET;
+
+//	printk(KERN_INFO "%s.%d locale=%s db offset=%d\n",__FUNCTION__, __LINE__,local_tc94b26_chip->locale,local_tc94b26_chip->hp_gain_offset_dB );
+	return 1;
+}
+EXPORT_SYMBOL(tc94b26_set_locale);
+
+char * tc94b26_get_locale(void)
+{
+//	printk(KERN_INFO "%s.%d \n",__FUNCTION__, __LINE__);
+	return local_tc94b26_chip->locale;
+
+}
+EXPORT_SYMBOL(tc94b26_get_locale);
+
+static int tc94b36_available(void)
+{
+	unsigned long flags;
+	int ret;
+
+	spin_lock_irqsave(&local_tc94b26_chip->lock, flags);
+	ret = !local_tc94b26_chip->busy;
+	spin_unlock_irqrestore(&local_tc94b26_chip->lock, flags);
+
+	return ret;
+}
+
 
 static int tc94b26_wait_spk(struct snd_soc_codec *codec)
 {
@@ -36,6 +203,7 @@ static int tc94b26_wait_spk(struct snd_soc_codec *codec)
 	unsigned long timeout;
 
 	timeout = jiffies + TIMEOUT;
+	//printk(KERN_INFO "%s %d jiffies=%d timeout=%d ",__FUNCTION__, __LINE__,jiffies,timeout);
 
 	do {
 		status = snd_soc_read(codec, TC94B26_STATUS);
@@ -43,7 +211,7 @@ static int tc94b26_wait_spk(struct snd_soc_codec *codec)
 			return status;
 
 		if (time_after(jiffies, timeout)) {
-			printk(KERN_DEBUG "status read timed out");
+			printk(KERN_DEBUG "%s %d status read timed out",__FUNCTION__, __LINE__);
 			return -ETIMEDOUT;
 		}
 		cpu_relax();
@@ -65,7 +233,7 @@ static int tc94b26_wait_mic(struct snd_soc_codec *codec)
                         return status;
 
                 if (time_after(jiffies, timeout)) {
-                        printk(KERN_DEBUG "status read timed out");
+                	printk(KERN_DEBUG "%s %d status read timed out",__FUNCTION__, __LINE__);
                         return -ETIMEDOUT;
                 }
                 cpu_relax();
@@ -261,6 +429,7 @@ static int tc94b26_startup(struct snd_pcm_substream *substream,
 
 		if (tc94b26_wait_spk(codec))
 			return -ETIMEDOUT;
+
 		snd_soc_update_bits(codec, TC94B26_HP_SET0,
 				TC94B26_HP_EN, TC94B26_HP_EN);
 		if (tc94b26_wait_spk(codec))
@@ -269,8 +438,6 @@ static int tc94b26_startup(struct snd_pcm_substream *substream,
 		snd_soc_update_bits(codec, TC94B26_SPK_SET,
 				TC94B26_SPK_EN, TC94B26_SPK_EN);
 	}
-
-
 	return 0;
 }
 
@@ -302,6 +469,24 @@ static int tc94b26_shutdown(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int tc94b26_volsw_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+
+		struct soc_mixer_control *mc =
+			(struct soc_mixer_control *)kcontrol->private_value;
+		struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+		unsigned int reg = mc->reg;
+		unsigned short val, mask;
+		mask=0x7F;  //bit 7 of DVOLC register is read only
+		val = ucontrol->value.integer.value[0];
+		local_tc94b26_chip->spkr_gain=val;  //store the gain to calculate headphone gain
+		if(local_tc94b26_chip->hp_connected_status){
+			val=convert_gain_level_for_hp();
+		}
+		return snd_soc_update_bits(codec, reg, mask, val);
+}
+
 static int tc94b26_gain_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
@@ -320,7 +505,6 @@ static int tc94b26_gain_put(struct snd_kcontrol *kcontrol,
 	val = (ucontrol->value.integer.value[0] & mask);
 	if (invert)
 		val = mask - val;
-
 	mask <<= shift;
 	val <<= shift;
 
@@ -350,28 +534,28 @@ static int tc94b26_put_mute(struct snd_kcontrol *kcontrol,
 static const char *mic_bias[] = {
 	"2.0V", "1.8V"
 };
-
 /*
- * Volume is mapped as:
+ * master Volume and capture volume are mapped as:
  * -65dB (-infinity) to 0dB - 0 to 0x41 : 1dB step
- * 0 to 32dB (0 to 16dB actual) - 0x41 - 0x61 : 1dB step (0.5dB actual)
+ * 0 to 32dB (0 to 16dB actual) - 0x41 to 0x61 :1dB step (0.5dB actual)
  */
-
 static const DECLARE_TLV_DB_MINMAX(mastervol_tlv, -6500, 3200);
-static const DECLARE_TLV_DB_MINMAX(micgain_tlv,  2700, 3600);	// +27db .. +36db
-static const DECLARE_TLV_DB_MINMAX(hpgain_tlv,   -100, 800);	// -1db .. +8db
-static const DECLARE_TLV_DB_MINMAX(spkgain_tlv,   300, 2400);	// +3db .. +24db
+static const DECLARE_TLV_DB_MINMAX(capturevol_tlv, -6500, 3200);
+static const DECLARE_TLV_DB_MINMAX(micgain_tlv, 2700, 3600); // +27db .. +36db
+static const DECLARE_TLV_DB_MINMAX(hpgain_tlv, -100, 800); // -1db .. +8db
+static const DECLARE_TLV_DB_MINMAX(spkgain_tlv, 300, 2400); // +3db .. +24db
 
 static const struct snd_kcontrol_new tc94b26_snd_controls[] = {
-	SOC_SINGLE_TLV("Master Playback Volume", TC94B26_DVOLC, 0, 0x61, 0,
-			mastervol_tlv),
-	SOC_SINGLE_EXT_TLV("Master Volume Limiter", TC94B26_DV_LIM, 0, 0x61, 0,
-		snd_soc_get_volsw, tc94b26_gain_put, mastervol_tlv),
-	SOC_SINGLE_TLV("Capture Volume", TC94B26_MC_SET1, 0, 0x61, 0,
-			mastervol_tlv),
+		SOC_SINGLE_EXT_TLV("Master Playback Volume", TC94B26_DVOLC, 0, 0x61, 0,
+				snd_soc_get_volsw, tc94b26_volsw_put,mastervol_tlv),
+		SOC_SINGLE_EXT_TLV("Master Volume Limiter", TC94B26_DV_LIM, 0, 0x61, 0,
+				snd_soc_get_volsw, tc94b26_gain_put, mastervol_tlv),
+		SOC_SINGLE_TLV("Capture Volume", TC94B26_MC_SET1, 0, 0x61, 0,
+				capturevol_tlv),
 
-	SOC_SINGLE_EXT("Master Playback Switch", TC94B26_SPK_SET, 6, 1, 1,
-		snd_soc_get_volsw, tc94b26_put_mute),
+		SOC_SINGLE_EXT("Master Playback Switch", TC94B26_SPK_SET, 6, 1, 1,
+				snd_soc_get_volsw, tc94b26_put_mute),
+
 
 	//FIXME: sesters - this enum looks out of place
 	//SOC_ENUM_SINGLE(TC94B26_MC_SET0, 5, 2, mic_bias),
@@ -384,21 +568,71 @@ static const struct snd_kcontrol_new tc94b26_snd_controls[] = {
 		snd_soc_get_volsw, tc94b26_gain_put, spkgain_tlv),
 };
 
+static void tc94b26_monitor_task(struct work_struct *work)
+{
+	unsigned int hp_status=0,dvol=0,i=20000;
+	unsigned long flags;
+
+	/* serialize access to chip*/
+	spin_lock_irqsave(&local_tc94b26_chip->lock, flags);
+	while (local_tc94b26_chip->busy) {
+		spin_unlock_irqrestore(&local_tc94b26_chip->lock, flags);
+		if (wait_event_interruptible(local_tc94b26_chip->wait,
+			(tc94b36_available())))
+			return;
+		spin_lock_irqsave(&local_tc94b26_chip->lock, flags);
+	}
+
+	local_tc94b26_chip->busy = 1;
+	spin_unlock_irqrestore(&local_tc94b26_chip->lock, flags);
+
+
+	tc94b26_read_reg_raw(TC94B26_INT_ACT);   //clear interrupt
+	hp_status= tc94b26_read_reg_raw(TC94B26_STATUS)& TC94B26_STATUS_PDET_ST;
+	if (hp_status!=local_tc94b26_chip->hp_connected_status){
+		if(hp_status) //convert gain if headphone is connected
+			dvol=convert_gain_level_for_hp();
+		else
+			dvol=local_tc94b26_chip->spkr_gain;
+		while((tc94b26_read_reg_raw(TC94B26_STATUS) & TC94B26_STATUS_BUSY_ST0)&& (i>0)){
+			i--;
+		}
+		if(i<0)
+			printk(KERN_ERR "\n %s,%d tc94b26 busy",__func__,__LINE__);
+		tc94b26_write_reg_raw(TC94B26_DVOLC,dvol);
+		local_tc94b26_chip->hp_connected_status=hp_status;
+	}
+		/* release tc94b26 */
+	spin_lock_irqsave(&local_tc94b26_chip->lock, flags);
+	local_tc94b26_chip->busy = 0;
+	spin_unlock_irqrestore(&local_tc94b26_chip->lock, flags);
+	wake_up_interruptible(&local_tc94b26_chip->wait);
+	return;
+}
+
+static irqreturn_t tc94b26_chip_irq(int irq, void *priv)
+{
+	struct tc94b26_private *chip = (struct tc94b26_private *)priv;
+	//printk(KERN_DEBUG "\n %s",__func__);
+	queue_work(chip->tc94b26_tasks, &chip->tc94b26_work);
+	return IRQ_HANDLED;
+
+}
+
 static int tc94b26_codec_probe(struct snd_soc_codec *codec)
 {
-	struct tc94b26_private *tc94b26  = snd_soc_codec_get_drvdata(codec);
+	struct tc94b26_private *tc94b26 = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
 
-	printk(KERN_DEBUG "%s: %s\n", __FUNCTION__, codec->name);
-
+	local_tc94b26_chip = tc94b26;
 	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_I2C);
 	if (ret < 0) {
 		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
 		return ret;
 	}
 
-        if (tc94b26_wait_mic(codec))
-                return -ETIMEDOUT;
+	if (tc94b26_wait_mic(codec))
+			return -ETIMEDOUT;
 	if (tc94b26_wait_spk(codec))
 		return -ETIMEDOUT;
 
@@ -413,11 +647,12 @@ static int tc94b26_codec_probe(struct snd_soc_codec *codec)
 	//snd_soc_write(codec, TC94B26_GSR_CFG0, 0x1B);
 	//snd_soc_write(codec, TC94B26_GSR_CFG1, 0x1B);
 
-	/* Limit volume to +8dB */
+	/* Limit volume to +16dB */
 	tc94b26_protected_write(codec, TC94B26_DV_LIM, TC94B26_LIMIT_DEFAULT);
 
 	if (tc94b26_wait_spk(codec))
 		return -ETIMEDOUT;
+
 
 	/* Unmute headphone + Speaker */
 	snd_soc_write(codec, TC94B26_HP_SET0, 0);
@@ -438,13 +673,46 @@ static int tc94b26_codec_probe(struct snd_soc_codec *codec)
 	}
 
 	/* Auto toggle setting */
-	snd_soc_write(codec, TC94B26_VOL_TOG0, AT_CF0_DFL_VAL); 
-	snd_soc_write(codec, TC94B26_AUTO_TOGGLE_CFG1, AT_CF1_DFL_VAL); 
-	
+	snd_soc_write(codec, TC94B26_VOL_TOG0, AT_CF0_DFL_VAL);		/*enable autoggle */
+	snd_soc_write(codec, TC94B26_AUTO_TOGGLE_CFG1, AT_CF1_DFL_VAL);	/*disable automatic volume change
+																	  * when toggling between SPK and HP */
+
 	/* Mic Gain setting default value */
 	snd_soc_write(codec, TC94B26_MC_SET1, MIC_GAIN_DFL_VAL); 
+	/* speaker and headphone AGAIN default value */
+	tc94b26_protected_write(codec, TC94B26_GAIN_LVL, (HP_AGAIN_DFL_VAL|SPKR_AGAIN_DFL_VAL|MIC_AGAIN_DFL_VAL));
+    /*save headphone connect/disconnect status*/
+	tc94b26->hp_connected_status= tc94b26_read_reg_raw(TC94B26_STATUS)& TC94B26_STATUS_PDET_ST;
+	tc94b26->hp_gain_offset_dB=3;   //default to 3dB assuming locale is US or canada
 
+	/* request GPIO input for TC94B26 IRQ */
+	ret = gpio_request_one(AUDIO_INT, GPIOF_IN, "AUDIO INT");
+	if (ret) {
+		printk(KERN_ERR "%s.%d: failed to get AUDIO_INT GPIO %d\n",
+				__FUNCTION__, __LINE__, AUDIO_INT);
+		gpio_free(AUDIO_INT);
+		return ret;
+	}
+	ret = request_irq(gpio_to_irq(AUDIO_INT),
+			tc94b26_chip_irq,
+			IRQF_TRIGGER_RISING | IRQF_DISABLED,
+			"TC94B26 IRQ", tc94b26);
+	if (ret) {
+		printk(KERN_ERR "%s.%d: failed to get TC94B26 IRQ\n",
+				__FUNCTION__, __LINE__);
+		gpio_free(AUDIO_INT);
+				return ret;
+	}
+	disable_irq(gpio_to_irq(AUDIO_INT));
 
+	init_waitqueue_head(&tc94b26->wait);
+	spin_lock_init(&tc94b26->lock);
+	/* initialize worker thread which processes irq */
+	tc94b26->tc94b26_tasks = create_singlethread_workqueue("tc94b26 tasks");
+	INIT_WORK(&tc94b26->tc94b26_work, tc94b26_monitor_task);
+
+	snd_soc_write(codec, TC94B26_INT_EN, (TC94B26_INT_EN_PDET_EN|TC94B26_INT_EN_GPIO_EN));
+	enable_irq(gpio_to_irq(AUDIO_INT));
 	return ret;
 }
 
@@ -485,6 +753,8 @@ static struct snd_soc_codec_driver soc_codec_device_tc94b26 = {
 	.probe			= tc94b26_codec_probe,
 	.controls		= tc94b26_snd_controls,
 	.num_controls		= ARRAY_SIZE(tc94b26_snd_controls),
+//	.reg_cache_size		= TC94B26_NUMREGS,
+//	.reg_word_size		= sizeof(u8),
 };
 
 static int tc94b26_i2c_probe(struct i2c_client *i2c_client,

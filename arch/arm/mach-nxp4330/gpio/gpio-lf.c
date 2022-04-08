@@ -108,20 +108,20 @@ static int lf3000_gpio_set_fn(struct gpio_chip* chip, unsigned offset, unsigned 
 	return 0;
 }
 
-static int lf3000_gpio_get_pu(struct gpio_chip* chip, unsigned offset)
+static NX_GPIO_PADPULL lf3000_gpio_get_pull(struct gpio_chip* chip, unsigned offset)
 {
 	unsigned int mod, pin;
 	mod = LF3000_GPIO_PHYS_PORT(offset);
 	pin = offset & LF3000_GPIO_PIN_MASK;
-	return NX_GPIO_GetPullEnable(mod, pin);
+	return NX_GPIO_GetPullMode(mod, pin);
 }
 
-static int lf3000_gpio_set_pu(struct gpio_chip* chip, unsigned offset, unsigned value)
+static int lf3000_gpio_set_pull(struct gpio_chip* chip, unsigned offset, NX_GPIO_PADPULL value)
 {
 	unsigned int mod, pin;
 	mod = LF3000_GPIO_PHYS_PORT(offset);
 	pin = offset & LF3000_GPIO_PIN_MASK;
-	NX_GPIO_SetPullUpEnable(mod, pin, value);
+	NX_GPIO_SetPullMode(mod, pin, value);
 	return 0;
 }
 
@@ -199,8 +199,8 @@ static struct gpio_chip lf3000_physical_gpiochip = {
 	.to_irq			= lf3000_gpio_to_irq,
 	.set_function		= lf3000_gpio_set_fn,
 	.get_function		= lf3000_gpio_get_fn,
-	.set_pullup		= lf3000_gpio_set_pu,
-	.get_pullup		= lf3000_gpio_get_pu,
+	.set_pull		= lf3000_gpio_set_pull,
+	.get_pull		= lf3000_gpio_get_pull,
 	.set_current		= lf3000_gpio_set_cur,
 	.get_current		= lf3000_gpio_get_cur,
 	.base			= LF3000_GPIO_PHYS,
