@@ -31,5 +31,12 @@ developer git history for reference.
 ./build.sh
 ```
 
+Equivalent to compiling BOGOTA default config:
+
+```
+make ARCH=arm nxp4330_bogota_defconfig
+make ARCH=arm uImage
+```
+
 Successful build will yield kernel uImage binary + modules.tar
 archive in parent ../deploy directory.
